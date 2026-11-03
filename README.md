@@ -61,7 +61,6 @@ each person signs in with their email, gets a code, and is in. On iPhone: Share 
 ## Notes and choices
 
 - **Sign-in is username + password.** Usernames map to made-up `@smash-club.app` addresses that never get mail. The admin creates each login from the Admin screen; the first visit lets the admin (`ajeeth`) set their own password.
-  it can be switched on later in Supabase without changing the app much.
 - "On time" means checking in at or before the gates time plus grace minutes (default 6:00 AM, 0 grace, Asia/Kolkata).
 - A strike is counted only on days when at least one person checked in, so days the court is closed never count against anyone. Today never counts as a strike.
 - Weekly win medals are awarded when a Monday–Sunday week finishes, and counted in the month that week ends.
