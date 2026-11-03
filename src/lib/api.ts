@@ -188,9 +188,21 @@ function supabaseApi(sb: SupabaseClient, url: string, key: string): Api {
       },
       async setLogin(playerId, username, password) {
         const email = usernameToEmail(username);
-        await signUpAs(username, password);
-        // Point the player at the new login; it links on their first sign-in.
-        fail((await sb.from('players').update({ email, user_id: null }).eq('id', playerId)).error);
+        checkPassword(password);
+        const owner = await sb.from('players').select('id').eq('email', email).neq('id', playerId).maybeSingle();
+        fail(owner.error);
+        if (owner.data) throw new Error('That username belongs to another player');
+        try {
+          await signUpAs(username, password);
+        } catch (e) {
+          // Login already exists (a reset, or an earlier save): just set the new password.
+          if (!/already taken/.test((e as Error).message)) throw e;
+          fail((await sb.rpc('admin_set_password', { p_username: cleanUsername(username), p_password: password })).error);
+        }
+        const current = await sb.from('players').select('email').eq('id', playerId).single();
+        fail(current.error);
+        if ((current.data as { email: string | null }).email !== email)
+          fail((await sb.from('players').update({ email, user_id: null }).eq('id', playerId)).error);
       },
       async updatePlayer(id, patch) {
         if (patch.email !== undefined) patch.email = patch.email?.toLowerCase() || null;

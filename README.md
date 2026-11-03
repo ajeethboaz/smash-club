@@ -45,7 +45,7 @@ With no Supabase keys the app runs in **demo mode** with sample data (nothing is
 2. **SQL Editor** → paste and run `supabase/migrations/20261103000000_init.sql`, then `supabase/seed.sql`.
    The seed adds the six players, makes `ajeethboaz@gmail.com` the admin, and sets Oct/Nov 2026 costs (Ramakrishnan out from November).
 3. **Authentication → Sign In / Providers → Email**: keep it on, but turn **off "Confirm email"**. Logins are username + password,
-   so no emails are ever sent. Run `supabase/migrations/20261103010000_username_logins.sql` after the first migration.
+   so no emails are ever sent. Run `supabase/migrations/20261103010000_username_logins.sql` and `20261103020000_admin_set_password.sql` after the first migration.
 4. **Project Settings → API**: copy the Project URL and the `anon` public key.
 
 ### 2. Hosting (Vercel or Netlify)
