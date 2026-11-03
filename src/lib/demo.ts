@@ -15,7 +15,7 @@ const ist = (date: string, minutes: number) =>
 
 export function demoApi(): Api {
   const players: Player[] = [
-    { id: 'aj', name: 'Ajeeth', email: 'ajeethboaz@gmail.com', active: true, is_admin: true },
+    { id: 'aj', name: 'Ajeeth', email: 'ajeeth@smash-club.app', active: true, is_admin: true },
     { id: 'mo', name: 'Monish', email: null, active: true, is_admin: false },
     { id: 'kr', name: 'Krishna', email: null, active: true, is_admin: false },
     { id: 'ra', name: 'Ramakrishnan', email: null, active: false, is_admin: false },
@@ -86,8 +86,9 @@ export function demoApi(): Api {
     demo: true,
     async getSessionEmail() { return signedIn ? players[0].email! : null; },
     onAuthChange(cb) { listeners.add(cb); return () => listeners.delete(cb); },
-    async sendCode() {},
-    async verifyCode() { signedIn = true; emit(); },
+    async signIn() { signedIn = true; emit(); },
+    async needsFirstAdmin() { return false; },
+    async createFirstAdmin() { signedIn = true; emit(); },
     async signOut() { signedIn = false; emit(); },
     async claim() { return players[0]; },
     async load() { return structuredClone(data()); },
@@ -114,10 +115,14 @@ export function demoApi(): Api {
         if (!p) payments.push((p = { month: m, player_id: id, marked_paid_at: null, confirmed_at: null }));
         p.confirmed_at = ok ? nowIso() : null;
       },
-      async addPlayer(name, email) {
+      async addPlayer(name) {
         const id = `p${players.length}`;
-        players.push({ id, name, email, active: true, is_admin: false });
+        players.push({ id, name, email: null, active: true, is_admin: false });
         lineup.push({ month, player_id: id, playing: true });
+        return id;
+      },
+      async setLogin(id, username) {
+        players.find((p) => p.id === id)!.email = `${username.trim().toLowerCase()}@smash-club.app`;
       },
       async updatePlayer(id, patch) { Object.assign(players.find((p) => p.id === id)!, patch); },
       async resolveGame(id, keep) {

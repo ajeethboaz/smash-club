@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { api } from './lib/api';
+import { api, emailToUsername } from './lib/api';
 import { ClubProvider } from './club';
 import { BottomNav, ToastProvider } from './ui';
 import Login from './pages/Login';
@@ -36,9 +36,8 @@ export default function App() {
         <div className="center-screen">
           <div className="stack" style={{ maxWidth: 320 }}>
             <h1 className="h1">Almost there</h1>
-            <p className="muted">{email} isn't on the player list yet. Ask your admin to add this email, then tap below.</p>
-            <button className="btn btn-green" onClick={() => location.reload()}>I've been added</button>
-            <button className="btn btn-ghost" onClick={() => api.signOut()}>Use a different email</button>
+            <p className="muted">The username <b>{emailToUsername(email)}</b> isn't linked to a player. Ask your admin to set up your login.</p>
+                        <button className="btn btn-ghost" onClick={() => api.signOut()}>Use a different username</button>
           </div>
         </div>
       )}

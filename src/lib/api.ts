@@ -24,8 +24,10 @@ export interface Api {
   demo: boolean;
   getSessionEmail(): Promise<string | null>;
   onAuthChange(cb: () => void): () => void;
-  sendCode(email: string): Promise<void>;
-  verifyCode(email: string, code: string): Promise<void>;
+  signIn(username: string, password: string): Promise<void>;
+  /** True until the first account is linked: lets the admin create their own login. */
+  needsFirstAdmin(): Promise<boolean>;
+  createFirstAdmin(username: string, password: string): Promise<void>;
   signOut(): Promise<void>;
   /** Links the signed-in account to its player row. Null when the email isn't on the list. */
   claim(): Promise<Player | null>;
@@ -38,7 +40,9 @@ export interface Api {
     saveMonth(m: MonthRow): Promise<void>;
     setPlaying(month: string, playerId: string, playing: boolean): Promise<void>;
     confirmPayment(month: string, playerId: string, confirmed: boolean): Promise<void>;
-    addPlayer(name: string, email: string | null): Promise<void>;
+    addPlayer(name: string): Promise<string>;
+    /** Creates (or replaces) a player's username + password login. */
+    setLogin(playerId: string, username: string, password: string): Promise<void>;
     updatePlayer(id: string, patch: Partial<Pick<Player, 'name' | 'email' | 'active' | 'is_admin'>>): Promise<void>;
     resolveGame(id: string, keep: boolean): Promise<void>;
     setCheckin(playerId: string, date: string, isoTime: string | null): Promise<void>;
@@ -50,7 +54,38 @@ function fail(error: { message: string } | null) {
   if (error) throw new Error(error.message);
 }
 
-function supabaseApi(sb: SupabaseClient): Api {
+/** Logins are username + password. Supabase needs an email, so each username maps to a
+ *  made-up address that never receives mail (Confirm email must be off in Supabase). */
+const DOMAIN = 'smash-club.app';
+export function cleanUsername(u: string) {
+  const v = u.trim().toLowerCase();
+  if (!/^[a-z0-9._-]{3,20}$/.test(v)) throw new Error('Username: 3–20 letters or numbers, no spaces');
+  return v;
+}
+export const usernameToEmail = (u: string) => `${cleanUsername(u)}@${DOMAIN}`;
+export const emailToUsername = (e: string | null | undefined) => (e ? e.replace(`@${DOMAIN}`, '') : '');
+function checkPassword(pw: string) {
+  if (pw.length < 6) throw new Error('Password must be at least 6 characters');
+}
+function friendly(error: { message: string } | null) {
+  if (!error) return;
+  if (/invalid login credentials/i.test(error.message)) throw new Error('Wrong username or password');
+  if (/already registered|already exists/i.test(error.message)) throw new Error('That username is already taken');
+  if (/confirm|email not confirmed/i.test(error.message)) throw new Error('Turn off "Confirm email" in Supabase first');
+  throw new Error(error.message);
+}
+
+function supabaseApi(sb: SupabaseClient, url: string, key: string): Api {
+  /** A throwaway client so creating a friend's login doesn't sign the admin out. */
+  const signUpAs = async (username: string, password: string) => {
+    checkPassword(password);
+    const temp = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'sc-temp' } });
+    const { data, error } = await temp.auth.signUp({ email: usernameToEmail(username), password });
+    friendly(error);
+    if (!data.session) throw new Error('Turn off "Confirm email" in Supabase first');
+    await temp.auth.signOut();
+  };
+
   return {
     demo: false,
     async getSessionEmail() {
@@ -61,11 +96,16 @@ function supabaseApi(sb: SupabaseClient): Api {
       const { data } = sb.auth.onAuthStateChange(() => cb());
       return () => data.subscription.unsubscribe();
     },
-    async sendCode(email) {
-      fail((await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } })).error);
+    async signIn(username, password) {
+      friendly((await sb.auth.signInWithPassword({ email: usernameToEmail(username), password })).error);
     },
-    async verifyCode(email, token) {
-      fail((await sb.auth.verifyOtp({ email, token, type: 'email' })).error);
+    async needsFirstAdmin() {
+      const { data, error } = await sb.rpc('needs_first_admin');
+      return !error && data === true;
+    },
+    async createFirstAdmin(username, password) {
+      await signUpAs(username, password);
+      friendly((await sb.auth.signInWithPassword({ email: usernameToEmail(username), password })).error);
     },
     async signOut() {
       await sb.auth.signOut();
@@ -136,8 +176,16 @@ function supabaseApi(sb: SupabaseClient): Api {
           confirmed_by: confirmed ? me.id : null,
         })).error);
       },
-      async addPlayer(name, email) {
-        fail((await sb.from('players').insert({ name, email: email?.toLowerCase() || null })).error);
+      async addPlayer(name) {
+        const { data, error } = await sb.from('players').insert({ name }).select('id').single();
+        fail(error);
+        return (data as { id: string }).id;
+      },
+      async setLogin(playerId, username, password) {
+        const email = usernameToEmail(username);
+        await signUpAs(username, password);
+        // Point the player at the new login; it links on their first sign-in.
+        fail((await sb.from('players').update({ email, user_id: null }).eq('id', playerId)).error);
       },
       async updatePlayer(id, patch) {
         if (patch.email !== undefined) patch.email = patch.email?.toLowerCase() || null;
@@ -165,4 +213,4 @@ const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 /** Real backend when Supabase keys are set; otherwise an in-memory demo club. */
-export const api: Api = url && key ? supabaseApi(createClient(url, key)) : demoApi();
+export const api: Api = url && key ? supabaseApi(createClient(url, key), url, key) : demoApi();

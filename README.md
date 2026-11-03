@@ -44,8 +44,8 @@ With no Supabase keys the app runs in **demo mode** with sample data (nothing is
 1. Create a project at [supabase.com](https://supabase.com) (region: Mumbai).
 2. **SQL Editor** → paste and run `supabase/migrations/20261103000000_init.sql`, then `supabase/seed.sql`.
    The seed adds the six players, makes `ajeethboaz@gmail.com` the admin, and sets Oct/Nov 2026 costs (Ramakrishnan out from November).
-3. **Authentication → Providers → Email**: keep it on. In **Authentication → Email Templates → Magic Link**, make sure the template
-   includes `{{ .Token }}` so people receive a 6-digit code (the app signs in with the code, which works inside the installed app).
+3. **Authentication → Sign In / Providers → Email**: keep it on, but turn **off "Confirm email"**. Logins are username + password,
+   so no emails are ever sent. Run `supabase/migrations/20261103010000_username_logins.sql` after the first migration.
 4. **Project Settings → API**: copy the Project URL and the `anon` public key.
 
 ### 2. Hosting (Vercel or Netlify)
@@ -60,7 +60,7 @@ each person signs in with their email, gets a code, and is in. On iPhone: Share 
 
 ## Notes and choices
 
-- **Sign-in uses an emailed 6-digit code**, not SMS. Phone OTP in India needs a paid SMS provider and DLT registration;
+- **Sign-in is username + password.** Usernames map to made-up `@smash-club.app` addresses that never get mail. The admin creates each login from the Admin screen; the first visit lets the admin (`ajeeth`) set their own password.
   it can be switched on later in Supabase without changing the app much.
 - "On time" means checking in at or before the gates time plus grace minutes (default 6:00 AM, 0 grace, Asia/Kolkata).
 - A strike is counted only on days when at least one person checked in, so days the court is closed never count against anyone. Today never counts as a strike.

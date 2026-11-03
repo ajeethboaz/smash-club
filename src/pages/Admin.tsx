@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useClub } from '../club';
-import { api } from '../lib/api';
+import { api, emailToUsername } from '../lib/api';
 import { localMinutes, rupees } from '../lib/engine';
 import { Icon } from '../ui';
 import { STATUS_LABEL } from './Pay';
@@ -20,7 +20,8 @@ export default function Admin() {
   const mo = d.months.find((x) => x.month === d.month);
   const [fees, setFees] = useState({ court: String(mo?.court_fee ?? 0), cork: String(mo?.cork_fee ?? 0), other: String(mo?.other_fee ?? 0) });
   const [newName, setNewName] = useState('');
-  const [newEmail, setNewEmail] = useState('');
+  const [login, setLogin] = useState<{ id: string; username: string; password: string } | null>(null);
+  const [shared, setShared] = useState<string | null>(null);
   const [fix, setFix] = useState({ player: d.players[0]?.id ?? '', date: d.today, time: '05:55' });
   const [start, setStart] = useState(d.settings.court_start.slice(0, 5));
   const [grace, setGrace] = useState(String(d.settings.grace_minutes));
@@ -95,8 +96,34 @@ export default function Admin() {
           <div key={p.id} className="list-row" style={{ alignItems: 'flex-start' }}>
             <span className="stack" style={{ gap: 6, flexGrow: 1, minWidth: 0 }}>
               <b style={{ color: lineup(p.id) ? 'var(--ink)' : 'var(--muted)' }}>{p.name}{p.is_admin ? ' · admin' : ''}</b>
-              <input className="input" style={{ height: 40, fontSize: 14, fontWeight: 500 }} type="email" aria-label={`${p.name}'s email`} placeholder="Add email so they can sign in"
-                defaultValue={p.email ?? ''} onBlur={(e) => { if ((e.target.value || null) !== (p.email ?? null)) void run(() => api.admin.updatePlayer(p.id, { email: e.target.value || null }), 'Email saved'); }} />
+              {login?.id === p.id ? (
+                <form className="stack" style={{ gap: 6 }} onSubmit={(e) => {
+                  e.preventDefault();
+                  const { username, password } = login;
+                  void run(() => api.admin.setLogin(p.id, username, password), `Login ready for ${p.name}`).then((ok) => {
+                    if (ok) { setShared(`Smash Club 🏸\n${location.origin}\nUsername: ${username.trim().toLowerCase()}\nPassword: ${password}`); setLogin(null); }
+                  });
+                }}>
+                  <input className="input" style={{ height: 40, fontSize: 14 }} placeholder="Username" autoCapitalize="none" autoCorrect="off" aria-label={`${p.name}'s username`}
+                    value={login.username} onChange={(e) => setLogin({ ...login, username: e.target.value })} />
+                  <input className="input" style={{ height: 40, fontSize: 14 }} placeholder="Password (6+ characters)" aria-label={`${p.name}'s password`}
+                    value={login.password} onChange={(e) => setLogin({ ...login, password: e.target.value })} />
+                  <div className="grid2">
+                    <button className="btn btn-green btn-sm">Save login</button>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setLogin(null)}>Cancel</button>
+                  </div>
+                </form>
+              ) : (
+                <span className="row" style={{ gap: 8 }}>
+                  <span className="small muted">{p.email ? `@${emailToUsername(p.email)}` : 'No login yet'}</span>
+                  {p.id !== d.me.id && (
+                    <button className="btn btn-ghost btn-sm" style={{ height: 32, padding: '0 10px' }}
+                      onClick={() => setLogin({ id: p.id, username: emailToUsername(p.email) || p.name.toLowerCase().replace(/[^a-z0-9]/g, ''), password: '' })}>
+                      {p.email ? 'Reset login' : 'Set login'}
+                    </button>
+                  )}
+                </span>
+              )}
             </span>
             <button className="switch" role="switch" aria-checked={lineup(p.id)} aria-label={`${p.name} playing this month`}
               onClick={() => run(async () => {
@@ -107,15 +134,26 @@ export default function Admin() {
             </button>
           </div>
         ))}
+        {shared && (
+          <div className="stack" style={{ gap: 8, padding: 12, marginTop: 8, borderRadius: 12, background: 'var(--lime-soft, #EEF7D2)' }}>
+            <b className="small">Send this to them on WhatsApp</b>
+            <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 14 }}>{shared}</pre>
+            <div className="grid2">
+              <a className="btn btn-green btn-sm" style={{ color: '#fff', textDecoration: 'none' }} href={`https://wa.me/?text=${encodeURIComponent(shared)}`} target="_blank" rel="noreferrer">WhatsApp</a>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShared(null)}>Done</button>
+            </div>
+          </div>
+        )}
         <form className="stack" style={{ paddingTop: 12, gap: 8 }} onSubmit={(e) => {
           e.preventDefault();
           if (!newName.trim()) return;
-          void run(() => api.admin.addPlayer(newName.trim(), newEmail.trim() || null), `${newName.trim()} added`).then((ok) => { if (ok) { setNewName(''); setNewEmail(''); } });
+          const name = newName.trim();
+          void run(async () => {
+            const id = await api.admin.addPlayer(name);
+            setLogin({ id, username: name.toLowerCase().replace(/[^a-z0-9]/g, ''), password: '' });
+          }, `${name} added. Now set their login above.`).then((ok) => { if (ok) setNewName(''); });
         }}>
-          <div className="grid2">
-            <input className="input" placeholder="Name" aria-label="New player name" value={newName} onChange={(e) => setNewName(e.target.value)} />
-            <input className="input" placeholder="Email" type="email" aria-label="New player email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
-          </div>
+          <input className="input" placeholder="New player's name" aria-label="New player name" value={newName} onChange={(e) => setNewName(e.target.value)} />
           <button className="btn btn-ghost btn-sm">+ Add player</button>
         </form>
       </section>

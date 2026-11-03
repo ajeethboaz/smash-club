@@ -1,23 +1,28 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { api } from '../lib/api';
 import { useToast } from '../ui';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [sent, setSent] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [setup, setSetup] = useState(false);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
+
+  useEffect(() => { void api.needsFirstAdmin().then(setSetup); }, []);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
     try {
-      if (!sent) { await api.sendCode(email.trim()); setSent(true); toast('Code sent, check your email'); }
-      else await api.verifyCode(email.trim(), code.trim());
+      if (setup) await api.createFirstAdmin(username, password);
+      else await api.signIn(username, password);
     } catch (err) { toast((err as Error).message, true); }
     setBusy(false);
   };
+
+  const inputStyle = { height: 56, border: 0, borderRadius: 16, background: 'var(--green-2)', color: '#F4F5EF', padding: '0 16px', fontSize: 17, fontWeight: 500 } as const;
+  const labelStyle = { fontSize: 14, fontWeight: 500, color: 'var(--soft-dark)' } as const;
 
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--green)', color: '#F4F5EF', display: 'flex', justifyContent: 'center' }}>
@@ -30,24 +35,23 @@ export default function Login() {
           <p style={{ margin: 0, fontSize: 17, lineHeight: 1.45, color: 'var(--soft-dark)', maxWidth: 280 }}>Show up, play, settle up. Your daily badminton crew in one place.</p>
         </div>
         <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <label htmlFor="email" style={{ fontSize: 14, fontWeight: 500, color: 'var(--soft-dark)' }}>Email</label>
-          <input id="email" type="email" required autoComplete="email" value={email} disabled={sent}
-            onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
-            style={{ height: 56, border: 0, borderRadius: 16, background: 'var(--green-2)', color: '#F4F5EF', padding: '0 16px', fontSize: 17, fontWeight: 500 }} />
-          {sent && (
-            <>
-              <label htmlFor="code" style={{ fontSize: 14, fontWeight: 500, color: 'var(--soft-dark)' }}>6-digit code from the email</label>
-              <input id="code" inputMode="numeric" autoComplete="one-time-code" required value={code}
-                onChange={(e) => setCode(e.target.value)} placeholder="123456" autoFocus
-                style={{ height: 56, border: 0, borderRadius: 16, background: 'var(--green-2)', color: '#F4F5EF', padding: '0 16px', fontSize: 22, fontWeight: 700, letterSpacing: 6 }} />
-            </>
+          {setup && (
+            <p style={{ margin: 0, padding: '12px 14px', borderRadius: 14, background: 'var(--green-2)', fontSize: 14, lineHeight: 1.4, color: '#F4F5EF' }}>
+              <b>First-time setup.</b> Enter the admin username (<b>ajeeth</b>) and choose your password.
+            </p>
           )}
+          <label htmlFor="username" style={labelStyle}>Username</label>
+          <input id="username" required autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false}
+            value={username} onChange={(e) => setUsername(e.target.value)} placeholder="e.g. monish" style={inputStyle} />
+          <label htmlFor="password" style={labelStyle}>{setup ? 'Choose a password' : 'Password'}</label>
+          <input id="password" type="password" required minLength={6} autoComplete={setup ? 'new-password' : 'current-password'}
+            value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
           <button className="btn btn-lime" style={{ height: 58, borderRadius: 18, fontSize: 17 }} disabled={busy}>
-            {sent ? 'Sign in' : 'Send code'}
+            {setup ? 'Create admin login' : 'Sign in'}
           </button>
-          {sent
-            ? <button type="button" onClick={() => { setSent(false); setCode(''); }} style={{ background: 'none', border: 0, color: 'var(--soft-dark)', fontSize: 14, textDecoration: 'underline' }}>Use a different email</button>
-            : <p style={{ margin: 0, fontSize: 13, color: 'var(--muted-dark)', textAlign: 'center' }}>Only players added by your admin can sign in.</p>}
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--muted-dark)', textAlign: 'center' }}>
+            {setup ? 'This shows only until the admin has signed in once.' : 'Ask your admin for your username and password.'}
+          </p>
         </form>
       </div>
     </main>
