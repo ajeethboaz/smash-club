@@ -22,7 +22,7 @@ export default function Admin() {
   const [fees, setFees] = useState({ court: String(mo?.court_fee ?? 0), cork: String(mo?.cork_fee ?? 0), other: String(mo?.other_fee ?? 0) });
   const [newName, setNewName] = useState('');
   const [login, setLogin] = useState<{ id: string; username: string; password: string } | null>(null);
-  const [shared, setShared] = useState<string | null>(null);
+  const [shared, setShared] = useState<{ id: string; text: string } | null>(null);
   const [fix, setFix] = useState({ player: d.players[0]?.id ?? '', date: d.today, time: '05:55' });
   const [start, setStart] = useState(d.settings.court_start.slice(0, 5));
   const [grace, setGrace] = useState(String(d.settings.grace_minutes));
@@ -102,7 +102,7 @@ export default function Admin() {
                   e.preventDefault();
                   const { username, password } = login;
                   void run(() => api.admin.setLogin(p.id, username, password), `Login ready for ${p.name}`).then((ok) => {
-                    if (ok) { setShared(`Smash Club 🏸\n${location.origin}\nUsername: ${username.trim().toLowerCase()}\nPassword: ${password}`); setLogin(null); }
+                    if (ok) { setShared({ id: p.id, text: `Smash Club 🏸\n${location.origin}\nUsername: ${username.trim().toLowerCase()}\nPassword: ${password}` }); setLogin(null); }
                   });
                 }}>
                   <input className="input" style={{ height: 40, fontSize: 14 }} placeholder="Username" autoCapitalize="none" autoCorrect="off" aria-label={`${p.name}'s username`}
@@ -125,6 +125,17 @@ export default function Admin() {
                   )}
                 </span>
               )}
+              {shared?.id === p.id && (
+                <div className="stack" style={{ gap: 8, padding: 12, marginTop: 8, borderRadius: 12, background: 'var(--lime-soft, #EEF7D2)' }}>
+                  <b className="small">Send this to them on WhatsApp</b>
+                  <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 14 }}>{shared.text}</pre>
+                  <div className="grid3">
+                    <button className="btn btn-ghost btn-sm" onClick={() => void navigator.clipboard.writeText(shared.text)}>Copy</button>
+                    <a className="btn btn-green btn-sm" style={{ color: '#fff', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }} href={`https://wa.me/?text=${encodeURIComponent(shared.text)}`} target="_blank" rel="noreferrer">WhatsApp</a>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setShared(null)}>Done</button>
+                  </div>
+                </div>
+              )}
             </span>
             <button className="switch" role="switch" aria-checked={lineup(p.id)} aria-label={`${p.name} playing this month`}
               onClick={() => run(async () => {
@@ -135,16 +146,6 @@ export default function Admin() {
             </button>
           </div>
         ))}
-        {shared && (
-          <div className="stack" style={{ gap: 8, padding: 12, marginTop: 8, borderRadius: 12, background: 'var(--lime-soft, #EEF7D2)' }}>
-            <b className="small">Send this to them on WhatsApp</b>
-            <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 14 }}>{shared}</pre>
-            <div className="grid2">
-              <a className="btn btn-green btn-sm" style={{ color: '#fff', textDecoration: 'none' }} href={`https://wa.me/?text=${encodeURIComponent(shared)}`} target="_blank" rel="noreferrer">WhatsApp</a>
-              <button className="btn btn-ghost btn-sm" onClick={() => setShared(null)}>Done</button>
-            </div>
-          </div>
-        )}
         <form className="stack" style={{ paddingTop: 12, gap: 8 }} onSubmit={(e) => {
           e.preventDefault();
           if (!newName.trim()) return;
