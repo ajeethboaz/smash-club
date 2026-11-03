@@ -23,6 +23,7 @@ export default function Home() {
   const { m, run } = useClub();
   const d = m.data;
   const [busy, setBusy] = useState(false);
+  const [confirmUndo, setConfirmUndo] = useState(false);
   const me = d.me;
   const you = (id: string) => (id === me.id ? 'You' : m.name(id));
   const nowMin = localMinutes(new Date().toISOString(), m.tz);
@@ -127,7 +128,15 @@ export default function Home() {
               </span>
             </span>
           </div>
-        ) : (
+        ) : null}
+        {m.meToday && (
+          <button onClick={() => { if (confirmUndo) { setConfirmUndo(false); void run(() => api.undoCheckIn(), 'Check-in removed'); } else setConfirmUndo(true); }}
+            disabled={busy}
+            style={{ alignSelf: 'center', background: 'none', border: 0, color: confirmUndo ? '#F5B347' : 'var(--muted-dark, #9AA79F)', fontSize: 14, fontWeight: confirmUndo ? 700 : 500, textDecoration: 'underline', padding: '4px 8px' }}>
+            {confirmUndo ? 'Tap again to undo your check-in' : 'Checked in by mistake? Undo'}
+          </button>
+        )}
+        {!m.meToday && (
           <button className="cta" onClick={checkIn} disabled={busy} style={{ background: late ? '#F5B347' : 'var(--gold)' }}>
             <span className="stack" style={{ gap: 4 }}>
               <span className="cta-title">{late ? 'Check in' : openMedal ? `Claim ${openMedal}` : 'Check in'}</span>

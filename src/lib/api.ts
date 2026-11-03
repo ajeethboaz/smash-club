@@ -34,6 +34,7 @@ export interface Api {
   claim(): Promise<Player | null>;
   load(): Promise<ClubData>;
   checkIn(): Promise<void>;
+  undoCheckIn(): Promise<void>;
   logGame(format: 'singles' | 'doubles', a: string[], b: string[], scoreA: number, scoreB: number): Promise<void>;
   flagGame(id: string, reason: string): Promise<void>;
   markPaid(month: string): Promise<void>;
@@ -156,6 +157,9 @@ function supabaseApi(sb: SupabaseClient, url: string, key: string): Api {
     },
     async checkIn() {
       fail((await sb.rpc('check_in')).error);
+    },
+    async undoCheckIn() {
+      fail((await sb.rpc('undo_check_in')).error);
     },
     async logGame(format, a, b, scoreA, scoreB) {
       fail((await sb.rpc('log_game', { p_format: format, p_team_a: a, p_team_b: b, p_score_a: scoreA, p_score_b: scoreB })).error);

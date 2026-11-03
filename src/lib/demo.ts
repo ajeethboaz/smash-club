@@ -97,6 +97,10 @@ export function demoApi(): Api {
       if (!checkins.some((c) => c.player_id === 'aj' && c.play_date === today))
         checkins.push({ player_id: 'aj', play_date: today, checked_in_at: ist(today, 356) });
     },
+    async undoCheckIn() {
+      const i = checkins.findIndex((c) => c.player_id === 'aj' && c.play_date === today);
+      if (i >= 0) checkins.splice(i, 1);
+    },
     async logGame(format, a, b, sa, sb) {
       games.push({ id: `g${games.length}`, played_at: nowIso(), format, score_a: sa, score_b: sb, flagged_by: null, a, b });
     },
