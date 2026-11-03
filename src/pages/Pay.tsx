@@ -2,6 +2,7 @@ import { useClub } from '../club';
 import { api } from '../lib/api';
 import { rupees, type PayStatus } from '../lib/engine';
 import { Avatar, Icon } from '../ui';
+import { AccountCard } from '../account';
 
 export const STATUS_LABEL: Record<PayStatus, string> = {
   confirmed: 'Paid', marked: 'Marked paid', pending: 'Pending', 'not-playing': 'Not playing',
@@ -52,7 +53,7 @@ export default function Pay() {
       <div className="between small" style={{ padding: '0 4px' }}>
         <span className="muted">Collected</span><b>{rupees(money.collected)} of {rupees(money.total)}</b>
       </div>
-      {!d.me.is_admin && <button className="btn btn-ghost btn-sm" onClick={() => api.signOut()}>Sign out</button>}
+      <AccountCard />
     </div>
   );
 }

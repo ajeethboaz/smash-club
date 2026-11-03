@@ -4,6 +4,7 @@ import { useClub } from '../club';
 import { api, emailToUsername } from '../lib/api';
 import { localMinutes, rupees } from '../lib/engine';
 import { Icon } from '../ui';
+import { AccountCard } from '../account';
 import { STATUS_LABEL } from './Pay';
 
 /** ISO instant for a local club date + HH:MM, in a fixed-offset or named zone. */
@@ -196,7 +197,7 @@ export default function Admin() {
         </div>
       </section>
 
-      <button className="btn btn-ghost btn-sm" onClick={() => api.signOut()}>Sign out</button>
+      <AccountCard />
     </div>
   );
 }

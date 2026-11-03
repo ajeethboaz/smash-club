@@ -90,6 +90,7 @@ export function demoApi(): Api {
     async needsFirstAdmin() { return false; },
     async createFirstAdmin() { signedIn = true; emit(); },
     async signOut() { signedIn = false; emit(); },
+    async changePassword() {},
     async claim() { return players[0]; },
     async load() { return structuredClone(data()); },
     async checkIn() {

@@ -29,6 +29,7 @@ export interface Api {
   needsFirstAdmin(): Promise<boolean>;
   createFirstAdmin(username: string, password: string): Promise<void>;
   signOut(): Promise<void>;
+  changePassword(password: string): Promise<void>;
   /** Links the signed-in account to its player row. Null when the email isn't on the list. */
   claim(): Promise<Player | null>;
   load(): Promise<ClubData>;
@@ -109,6 +110,10 @@ function supabaseApi(sb: SupabaseClient, url: string, key: string): Api {
     },
     async signOut() {
       await sb.auth.signOut();
+    },
+    async changePassword(password) {
+      checkPassword(password);
+      friendly((await sb.auth.updateUser({ password })).error);
     },
     async claim() {
       const { data, error } = await sb.rpc('claim_player');
