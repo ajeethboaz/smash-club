@@ -6,7 +6,7 @@ export type Usage = 'no-login' | 'never' | 'lapsed' | 'active';
 export type PlayerActivity = {
   id: string; name: string;
   usage: Usage; lastSeen: string | null;
-  hereToday: boolean; checkinsThisWeek: number; winsThisWeek: number; gamesThisWeek: number;
+  offLineup: boolean; hereToday: boolean; checkinsThisWeek: number; winsThisWeek: number; gamesThisWeek: number;
 };
 
 /** "just now", "3h ago", "yesterday", "4 days ago". */
@@ -26,21 +26,23 @@ export function playerActivity(m: Model): PlayerActivity[] {
   const weekDays = m.days.filter((d) => d.date >= m.week);
   const weekGames = m.results.filter((r) => r.date >= m.week);
   const order: Usage[] = ['no-login', 'never', 'lapsed', 'active'];
-  return m.roster
-    .filter((p) => p.active)
+  // Everyone in this month's line-up, plus anyone else who has a login (e.g. not playing this month).
+  const inLineup = (id: string) => m.roster.some((r) => r.id === id && r.active);
+  return m.data.players
+    .filter((p) => inLineup(p.id) || p.email)
     .map((p) => {
       const seen = p.last_seen_at ?? null;
       const usage: Usage = !p.email ? 'no-login' : !seen ? 'never'
         : Date.now() - Date.parse(seen) > 3 * 86400000 ? 'lapsed' : 'active';
       return {
-        id: p.id, name: p.name, usage, lastSeen: seen,
+        id: p.id, name: p.name, usage, lastSeen: seen, offLineup: !inLineup(p.id),
         hereToday: here.has(p.id),
         checkinsThisWeek: weekDays.filter((d) => d.arrivals.some((a) => a.player_id === p.id)).length,
         winsThisWeek: weekGames.filter((r) => r.winners.includes(p.id)).length,
         gamesThisWeek: weekGames.filter((r) => r.winners.includes(p.id) || r.losers.includes(p.id)).length,
       };
     })
-    .sort((a, b) => order.indexOf(a.usage) - order.indexOf(b.usage) || a.name.localeCompare(b.name));
+    .sort((a, b) => Number(a.offLineup) - Number(b.offLineup) || order.indexOf(a.usage) - order.indexOf(b.usage) || a.name.localeCompare(b.name));
 }
 
 const MEDAL_EMOJI = { gold: '🥇', silver: '🥈', bronze: '🥉' } as const;

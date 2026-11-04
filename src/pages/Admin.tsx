@@ -75,9 +75,10 @@ export default function Admin() {
               return (
                 <div key={x.id} className="list-row" style={{ alignItems: 'flex-start' }}>
                   <span className="stack" style={{ gap: 4, flexGrow: 1, minWidth: 0 }}>
-                    <span className="row" style={{ gap: 8 }}>
+                    <span className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
                       <b>{x.name}</b>
                       <span className={`status ${USAGE[x.usage].cls}`}>{USAGE[x.usage].label}</span>
+                      {x.offLineup && <span className="status s-not-playing">Not playing this month</span>}
                     </span>
                     <span className="tiny muted">
                       {x.lastSeen ? `Opened ${ago(x.lastSeen)}` : x.usage === 'no-login' ? 'Set a login below' : 'Hasn\'t signed in yet'}
