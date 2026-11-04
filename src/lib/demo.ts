@@ -15,11 +15,11 @@ const ist = (date: string, minutes: number) =>
 
 export function demoApi(): Api {
   const players: Player[] = [
-    { id: 'aj', name: 'Ajeeth', email: 'ajeeth@smash-club.app', active: true, is_admin: true },
-    { id: 'mo', name: 'Monish', email: null, active: true, is_admin: false },
-    { id: 'kr', name: 'Krishna', email: null, active: true, is_admin: false },
+    { id: 'aj', name: 'Ajeeth', email: 'ajeeth@smash-club.app', active: true, is_admin: true, last_seen_at: new Date().toISOString() },
+    { id: 'mo', name: 'Monish', email: 'monish@smash-club.app', last_seen_at: new Date(Date.now() - 2 * 86400000).toISOString(), active: true, is_admin: false },
+    { id: 'kr', name: 'Krishna', email: 'krishna@smash-club.app', last_seen_at: new Date(Date.now() - 3 * 3600000).toISOString(), active: true, is_admin: false },
     { id: 'ra', name: 'Ramakrishnan', email: null, active: false, is_admin: false },
-    { id: 're', name: 'Rebin', email: null, active: true, is_admin: false },
+    { id: 're', name: 'Rebin', email: 'rebin@smash-club.app', last_seen_at: null, active: true, is_admin: false },
     { id: 'ka', name: 'Kanakaraj', email: null, active: true, is_admin: false },
   ];
   const settings: FullSettings = {

@@ -2,7 +2,7 @@
 // Pure functions: raw rows in, everything the screens show out.
 // Attendance and games are two separate tracks and never feed each other.
 
-export type Player = { id: string; name: string; active: boolean; is_admin: boolean; email?: string | null };
+export type Player = { id: string; name: string; active: boolean; is_admin: boolean; email?: string | null; last_seen_at?: string | null };
 export type Settings = { court_start: string; grace_minutes: number; timezone: string };
 export type Checkin = { player_id: string; play_date: string; checked_in_at: string };
 export type Game = {

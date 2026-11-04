@@ -6,6 +6,14 @@ import { localMinutes, rupees } from '../lib/engine';
 import { Icon } from '../ui';
 import { AccountCard } from '../account';
 import { STATUS_LABEL } from './Pay';
+import { ago, dailyRecap, playerActivity, whatsappLink, type Usage } from '../lib/activity';
+
+const USAGE: Record<Usage, { label: string; cls: string }> = {
+  'no-login': { label: 'No login yet', cls: 's-not-playing' },
+  never: { label: 'Never opened', cls: 's-pending' },
+  lapsed: { label: 'Gone quiet', cls: 's-marked' },
+  active: { label: 'Active', cls: 's-confirmed' },
+};
 
 /** ISO instant for a local club date + HH:MM, in a fixed-offset or named zone. */
 function zonedIso(date: string, hhmm: string, tz: string) {
@@ -45,6 +53,52 @@ export default function Admin() {
         <Link to="/" className="icon-btn" aria-label="Back to home" style={{ background: '#fff', color: 'var(--ink)' }}><Icon name="back" size={22} /></Link>
         <h1 className="h1" style={{ fontSize: 28 }}>Admin</h1>
       </header>
+
+      {(() => {
+        const acts = playerActivity(m);
+        const opened = acts.filter((x) => x.lastSeen).length;
+        const url = location.origin;
+        return (
+          <section className="card" style={{ gap: 0 }}>
+            <div className="between" style={{ paddingBottom: 4 }}>
+              <h2 className="h3">Who's using the app</h2>
+              <span className="tiny muted">This week</span>
+            </div>
+            <p className="small muted" style={{ margin: '0 0 8px' }}>
+              {opened} of {acts.length} have opened it · {m.todayArrivals.length} checked in today · {m.results.filter((r) => r.date >= m.week).length} games logged this week
+            </p>
+            {acts.map((x) => {
+              const nudge = x.usage === 'no-login' || x.id === d.me.id ? null
+                : x.usage === 'never' ? `Hey ${x.name}! Your Smash Club login is waiting 🏸 Open ${url}, sign in, and tap Check in when you reach court.`
+                : !x.hereToday ? `${x.name}, court's waiting 🏸 Don't forget to check in on Smash Club: ${url}`
+                : x.gamesThisWeek === 0 ? `${x.name}, won a game? 🏆 Tap "I won!" on Smash Club so it counts for King of the Court: ${url}` : null;
+              return (
+                <div key={x.id} className="list-row" style={{ alignItems: 'flex-start' }}>
+                  <span className="stack" style={{ gap: 4, flexGrow: 1, minWidth: 0 }}>
+                    <span className="row" style={{ gap: 8 }}>
+                      <b>{x.name}</b>
+                      <span className={`status ${USAGE[x.usage].cls}`}>{USAGE[x.usage].label}</span>
+                    </span>
+                    <span className="tiny muted">
+                      {x.lastSeen ? `Opened ${ago(x.lastSeen)}` : x.usage === 'no-login' ? 'Set a login below' : 'Hasn\'t signed in yet'}
+                      {' · '}{x.hereToday ? '✅ here today' : 'not checked in today'}
+                      {' · '}{x.checkinsThisWeek} check-in{x.checkinsThisWeek === 1 ? '' : 's'}, {x.winsThisWeek} win{x.winsThisWeek === 1 ? '' : 's'} this week
+                    </span>
+                  </span>
+                  {nudge && (
+                    <a className="btn btn-ghost btn-sm" href={whatsappLink(nudge)} target="_blank" rel="noreferrer"
+                      style={{ height: 32, padding: '0 10px', display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}>Nudge</a>
+                  )}
+                </div>
+              );
+            })}
+            <a className="btn btn-green btn-sm" href={whatsappLink(dailyRecap(m, url))} target="_blank" rel="noreferrer"
+              style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', color: 'var(--lime)' }}>
+              Share today's scoreboard to the group
+            </a>
+          </section>
+        );
+      })()}
 
       <section className="card">
         <h2 className="h3">{monthName} costs</h2>

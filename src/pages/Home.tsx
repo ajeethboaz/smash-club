@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useClub } from '../club';
 import { api } from '../lib/api';
 import { fmtTime, localMinutes, MEDALS, startMinutes, type Medal } from '../lib/engine';
+import { dailyRecap, whatsappLink } from '../lib/activity';
 import { Avatar, BADGE_ICON, Icon, MEDAL_COLOR, MedalSvg, Podium, Steps } from '../ui';
 
 const ordinal = (n: number) => `${n}${['th', 'st', 'nd', 'rd'][n % 100 > 10 && n % 100 < 14 ? 0 : n % 10] ?? 'th'}`;
@@ -292,20 +293,23 @@ export default function Home() {
           <p className="tiny muted" style={{ margin: 0 }}>Logged by a player after each game. Players in a game can flag its score for 24 hours.</p>
         </section>
 
-        {m.todayArrivals.length > 0 && (
-          <section className="card" style={{ gap: 4 }}>
-            <h2 className="h3" style={{ marginBottom: 6 }}>Who's on court today</h2>
-            {m.todayArrivals.map((x, i) => (
-              <div key={x.player_id} className="list-row">
-                <span className="num" style={{ width: 20, fontSize: 16, color: 'var(--muted)' }}>{i + 1}</span>
-                <Avatar name={m.name(x.player_id)} size={36} />
-                <span style={{ flexGrow: 1, fontWeight: 700 }}>{you(x.player_id)}</span>
-                <span className="small muted">{fmtTime(x.at, m.tz)}</span>
-                <span className={`status ${x.onTime ? 's-confirmed' : 's-pending'}`}>{x.onTime ? 'On time' : 'Late'}</span>
-              </div>
-            ))}
-          </section>
-        )}
+        <section className="card" style={{ gap: 4 }}>
+          <h2 className="h3" style={{ marginBottom: 6 }}>Who's on court today</h2>
+          {m.todayArrivals.length === 0 && <p className="small muted" style={{ margin: 0 }}>Nobody yet. Be the first and take gold!</p>}
+          {m.todayArrivals.map((x, i) => (
+            <div key={x.player_id} className="list-row">
+              <span className="num" style={{ width: 20, fontSize: 16, color: 'var(--muted)' }}>{i + 1}</span>
+              <Avatar name={m.name(x.player_id)} size={36} />
+              <span style={{ flexGrow: 1, fontWeight: 700 }}>{you(x.player_id)}</span>
+              <span className="small muted">{fmtTime(x.at, m.tz)}</span>
+              <span className={`status ${x.onTime ? 's-confirmed' : 's-pending'}`}>{x.onTime ? 'On time' : 'Late'}</span>
+            </div>
+          ))}
+          <a className="btn btn-green btn-sm" href={whatsappLink(dailyRecap(m, location.origin))} target="_blank" rel="noreferrer"
+            style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', color: 'var(--lime)' }}>
+            Share today's scoreboard on WhatsApp
+          </a>
+        </section>
       </div>
     </>
   );

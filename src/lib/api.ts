@@ -124,9 +124,15 @@ function supabaseApi(sb: SupabaseClient, url: string, key: string): Api {
     async load() {
       const ensured = await sb.rpc('ensure_current_month');
       fail(ensured.error);
+      void sb.rpc('mark_seen').then(() => {}, () => {}); // best effort: lets the admin see who uses the app
+      // last_seen_at only exists once the 20261104 migration has run; fall back if it hasn't.
+      const loadPlayers = async () => {
+        const r = await sb.from('players').select('id,name,email,active,is_admin,last_seen_at').order('name');
+        return r.error ? sb.from('players').select('id,name,email,active,is_admin').order('name') : r;
+      };
       const [settings, players, checkins, games, months, lineup, payments, me] = await Promise.all([
         sb.from('settings').select('*').eq('id', 1).single(),
-        sb.from('players').select('id,name,email,active,is_admin').order('name'),
+        loadPlayers(),
         sb.from('checkins').select('player_id,play_date,checked_in_at'),
         sb.from('games').select('id,played_at,format,score_a,score_b,flagged_by,game_players(player_id,team)').order('played_at'),
         sb.from('months').select('*').order('month'),
