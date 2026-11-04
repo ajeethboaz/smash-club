@@ -54,6 +54,17 @@ export default function Admin() {
         <h1 className="h1" style={{ fontSize: 28 }}>Admin</h1>
       </header>
 
+      {d.me.is_super && (
+        <Link to="/clubs" className="card dark" style={{ textDecoration: 'none', color: '#F4F5EF', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span className="stack" style={{ gap: 2 }}>
+            <span className="label" style={{ color: 'var(--lime)' }}>Super admin</span>
+            <span className="h3">Clubs</span>
+            <span className="tiny" style={{ color: 'var(--soft-dark)' }}>Create clubs, add their admins, reset any login</span>
+          </span>
+          <span style={{ fontSize: 24, color: 'var(--lime)' }}>›</span>
+        </Link>
+      )}
+
       {(() => {
         const acts = playerActivity(m);
         const opened = acts.filter((x) => x.lastSeen).length;
@@ -69,9 +80,9 @@ export default function Admin() {
             </p>
             {acts.map((x) => {
               const nudge = x.usage === 'no-login' || x.id === d.me.id ? null
-                : x.usage === 'never' ? `Hey ${x.name}! Your Smash Club login is waiting 🏸 Open ${url}, sign in, and tap Check in when you reach court.`
-                : !x.hereToday ? `${x.name}, court's waiting 🏸 Don't forget to check in on Smash Club: ${url}`
-                : x.gamesThisWeek === 0 ? `${x.name}, won a game? 🏆 Tap "I won!" on Smash Club so it counts for King of the Court: ${url}` : null;
+                : x.usage === 'never' ? `Hey ${x.name}! Your ${d.settings.club_name} login is waiting 🏸 Open ${url}, sign in, and tap Check in when you reach court.`
+                : !x.hereToday ? `${x.name}, court's waiting 🏸 Don't forget to check in on ${d.settings.club_name}: ${url}`
+                : x.gamesThisWeek === 0 ? `${x.name}, won a game? 🏆 Tap "I won!" on ${d.settings.club_name} so it counts for King of the Court: ${url}` : null;
               return (
                 <div key={x.id} className="list-row" style={{ alignItems: 'flex-start' }}>
                   <span className="stack" style={{ gap: 4, flexGrow: 1, minWidth: 0 }}>
@@ -157,7 +168,7 @@ export default function Admin() {
                   e.preventDefault();
                   const { username, password } = login;
                   void run(() => api.admin.setLogin(p.id, username, password), `Login ready for ${p.name}`).then((ok) => {
-                    if (ok) { setShared({ id: p.id, text: `Smash Club 🏸\n${location.origin}\nUsername: ${username.trim().toLowerCase()}\nPassword: ${password}` }); setLogin(null); }
+                    if (ok) { setShared({ id: p.id, text: `${d.settings.club_name} 🏸\n${location.origin}\nUsername: ${username.trim().toLowerCase()}\nPassword: ${password}` }); setLogin(null); }
                   });
                 }}>
                   <input className="input" style={{ height: 40, fontSize: 14 }} placeholder="Username" autoCapitalize="none" autoCorrect="off" aria-label={`${p.name}'s username`}
@@ -170,12 +181,18 @@ export default function Admin() {
                   </div>
                 </form>
               ) : (
-                <span className="row" style={{ gap: 8 }}>
+                <span className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
                   <span className="small muted">{p.email ? `@${emailToUsername(p.email)}` : 'No login yet'}</span>
                   {p.id !== d.me.id && (
                     <button className="btn btn-ghost btn-sm" style={{ height: 32, padding: '0 10px' }}
                       onClick={() => setLogin({ id: p.id, username: emailToUsername(p.email) || p.name.toLowerCase().replace(/[^a-z0-9]/g, ''), password: '' })}>
                       {p.email ? 'Reset login' : 'Set login'}
+                    </button>
+                  )}
+                  {p.id !== d.me.id && (
+                    <button className="btn btn-ghost btn-sm" style={{ height: 32, padding: '0 10px' }}
+                      onClick={() => run(() => api.admin.updatePlayer(p.id, { is_admin: !p.is_admin }), p.is_admin ? `${p.name} is no longer an admin` : `${p.name} is now an admin`)}>
+                      {p.is_admin ? 'Remove admin' : 'Make admin'}
                     </button>
                   )}
                 </span>

@@ -7,6 +7,9 @@ export type FullSettings = Settings & {
   club_name: string; court_lat: number | null; court_lng: number | null; court_radius_m: number;
 };
 
+/** A club as the super admin sees it: its people, never its money. */
+export type ClubSummary = { id: string; name: string; players: Player[] };
+
 export type ClubData = {
   settings: FullSettings;
   players: Player[];
@@ -50,6 +53,12 @@ export interface Api {
     setCheckin(playerId: string, date: string, isoTime: string | null): Promise<void>;
     saveSettings(patch: Partial<FullSettings>): Promise<void>;
   };
+  /** Super admin only. */
+  super: {
+    listClubs(): Promise<ClubSummary[]>;
+    createClub(name: string): Promise<string>;
+    addPlayer(clubId: string, name: string, isAdmin: boolean): Promise<string>;
+  };
 }
 
 function fail(error: { message: string } | null) {
@@ -88,6 +97,8 @@ function supabaseApi(sb: SupabaseClient, url: string, key: string): Api {
     await temp.auth.signOut();
   };
 
+  let clubId = ''; // the signed-in player's club, set by load()
+
   return {
     demo: false,
     async getSessionEmail() {
@@ -125,23 +136,22 @@ function supabaseApi(sb: SupabaseClient, url: string, key: string): Api {
       const ensured = await sb.rpc('ensure_current_month');
       fail(ensured.error);
       void sb.rpc('mark_seen').then(() => {}, () => {}); // best effort: lets the admin see who uses the app
-      // last_seen_at only exists once the 20261104 migration has run; fall back if it hasn't.
-      const loadPlayers = async () => {
-        const r = await sb.from('players').select('id,name,email,active,is_admin,last_seen_at').order('name');
-        return r.error ? sb.from('players').select('id,name,email,active,is_admin').order('name') : r;
-      };
-      const [settings, players, checkins, games, months, lineup, payments, me] = await Promise.all([
-        sb.from('settings').select('*').eq('id', 1).single(),
-        loadPlayers(),
-        sb.from('checkins').select('player_id,play_date,checked_in_at'),
-        sb.from('games').select('id,played_at,format,score_a,score_b,flagged_by,game_players(player_id,team)').order('played_at'),
-        sb.from('months').select('*').order('month'),
-        sb.from('month_players').select('*'),
-        sb.from('payments').select('*'),
-        sb.rpc('claim_player'),
+      const me = await sb.rpc('claim_player');
+      fail(me.error);
+      clubId = (me.data as Player).club_id!;
+      const [club, players, checkins, games, months, lineup, payments] = await Promise.all([
+        sb.from('clubs').select('*').eq('id', clubId).single(),
+        sb.from('players').select('id,name,email,active,is_admin,is_super,club_id,last_seen_at').eq('club_id', clubId).order('name'),
+        sb.from('checkins').select('player_id,play_date,checked_in_at').eq('club_id', clubId),
+        sb.from('games').select('id,played_at,format,score_a,score_b,flagged_by,game_players(player_id,team)').eq('club_id', clubId).order('played_at'),
+        sb.from('months').select('month,court_fee,cork_fee,other_fee').eq('club_id', clubId).order('month'),
+        sb.from('month_players').select('month,player_id,playing').eq('club_id', clubId),
+        sb.from('payments').select('month,player_id,marked_paid_at,confirmed_at').eq('club_id', clubId),
       ]);
-      for (const r of [settings, players, checkins, games, months, lineup, payments, me]) fail(r.error);
-      const s = settings.data as FullSettings;
+      const settings = club;
+      for (const r of [club, players, checkins, games, months, lineup, payments]) fail(r.error);
+      const c = settings.data as Omit<FullSettings, 'club_name'> & { name: string };
+      const s: FullSettings = { ...c, club_name: c.name };
       const today = localDate(new Date().toISOString(), s.timezone);
       type Row = Omit<Game, 'a' | 'b'> & { game_players: { player_id: string; team: 'A' | 'B' }[] };
       return {
@@ -178,7 +188,7 @@ function supabaseApi(sb: SupabaseClient, url: string, key: string): Api {
     },
     admin: {
       async saveMonth(m) {
-        fail((await sb.from('months').upsert(m)).error);
+        fail((await sb.from('months').upsert({ ...m, club_id: clubId }, { onConflict: 'club_id,month' })).error);
       },
       async setPlaying(month, player_id, playing) {
         fail((await sb.from('month_players').upsert({ month, player_id, playing })).error);
@@ -199,9 +209,9 @@ function supabaseApi(sb: SupabaseClient, url: string, key: string): Api {
       async setLogin(playerId, username, password) {
         const email = usernameToEmail(username);
         checkPassword(password);
-        const owner = await sb.from('players').select('id').eq('email', email).neq('id', playerId).maybeSingle();
-        fail(owner.error);
-        if (owner.data) throw new Error('That username belongs to another player');
+        const taken = await sb.rpc('username_taken', { p_username: cleanUsername(username), p_player: playerId });
+        fail(taken.error);
+        if (taken.data) throw new Error(`"${cleanUsername(username)}" is taken. Try another, like ${cleanUsername(username)}.k`);
         try {
           await signUpAs(username, password);
         } catch (e) {
@@ -230,7 +240,29 @@ function supabaseApi(sb: SupabaseClient, url: string, key: string): Api {
           : (await sb.from('checkins').delete().match({ player_id, play_date })).error);
       },
       async saveSettings(patch) {
-        fail((await sb.from('settings').update(patch).eq('id', 1)).error);
+        const { club_name, ...rest } = patch;
+        fail((await sb.from('clubs').update({ ...rest, ...(club_name ? { name: club_name } : {}) }).eq('id', clubId)).error);
+      },
+    },
+    super: {
+      async listClubs() {
+        const [clubs, players] = await Promise.all([
+          sb.from('clubs').select('id,name').order('created_at'),
+          sb.from('players').select('id,name,email,active,is_admin,is_super,club_id,last_seen_at').order('name'),
+        ]);
+        fail(clubs.error); fail(players.error);
+        const all = players.data as Player[];
+        return (clubs.data as { id: string; name: string }[]).map((c) => ({ ...c, players: all.filter((p) => p.club_id === c.id) }));
+      },
+      async createClub(name) {
+        const { data, error } = await sb.from('clubs').insert({ name: name.trim() }).select('id').single();
+        fail(error);
+        return (data as { id: string }).id;
+      },
+      async addPlayer(club_id, name, is_admin) {
+        const { data, error } = await sb.from('players').insert({ name: name.trim(), club_id, is_admin }).select('id').single();
+        fail(error);
+        return (data as { id: string }).id;
       },
     },
   };

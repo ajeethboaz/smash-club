@@ -9,6 +9,7 @@ import LogGame from './pages/LogGame';
 import Board from './pages/Board';
 import Pay from './pages/Pay';
 import Admin from './pages/Admin';
+import Clubs from './pages/Clubs';
 
 /** Shows the error instead of a blank screen if anything crashes while rendering. */
 class CrashGuard extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -73,6 +74,7 @@ export default function App() {
                 <Route path="/board" element={<Board />} />
                 <Route path="/pay" element={<Pay />} />
                 <Route path="/admin" element={<Admin />} />
+                <Route path="/clubs" element={<Clubs />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </div>

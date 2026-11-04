@@ -94,7 +94,7 @@ export default function Home() {
       <section className="hero">
         <header className="between">
           <div className="stack" style={{ gap: 4 }}>
-            <span className="sub">{dateLabel} · court opens {startLabel}</span>
+            <span className="sub">{d.settings.club_name} · {dateLabel} · court opens {startLabel}</span>
             <h1 className="h1" style={{ fontSize: 28 }}>{greeting}, {me.name}</h1>
           </div>
           {me.is_admin && <Link to="/admin" className="icon-btn" aria-label="Admin settings" style={{ background: 'var(--ink-2)', color: '#F4F5EF' }}><Icon name="gear" size={22} /></Link>}

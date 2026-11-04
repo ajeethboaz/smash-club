@@ -1,6 +1,6 @@
 // In-memory demo club, used when no Supabase keys are configured.
 // Lets anyone click through the app before the backend is set up.
-import type { Api, ClubData, FullSettings } from './api';
+import type { Api, ClubData, ClubSummary, FullSettings } from './api';
 import type { Checkin, Game, MonthPlayer, MonthRow, Payment, Player } from './engine';
 import { addDays, localDate, monthOf } from './engine';
 
@@ -15,13 +15,19 @@ const ist = (date: string, minutes: number) =>
 
 export function demoApi(): Api {
   const players: Player[] = [
-    { id: 'aj', name: 'Ajeeth', email: 'ajeeth@smash-club.app', active: true, is_admin: true, last_seen_at: new Date().toISOString() },
+    { id: 'aj', name: 'Ajeeth', email: 'ajeeth@smash-club.app', active: true, is_admin: true, is_super: true, last_seen_at: new Date().toISOString() },
     { id: 'mo', name: 'Monish', email: 'monish@smash-club.app', last_seen_at: new Date(Date.now() - 2 * 86400000).toISOString(), active: true, is_admin: false },
     { id: 'kr', name: 'Krishna', email: 'krishna@smash-club.app', last_seen_at: new Date(Date.now() - 3 * 3600000).toISOString(), active: true, is_admin: false },
     { id: 'ra', name: 'Ramakrishnan', email: null, active: false, is_admin: false },
     { id: 're', name: 'Rebin', email: 'rebin@smash-club.app', last_seen_at: null, active: true, is_admin: false },
     { id: 'ka', name: 'Kanakaraj', email: null, active: true, is_admin: false },
   ];
+  for (const p of players) p.club_id = 'smash';
+  // A second club, only visible to the super admin (players only, never their money).
+  const otherClubs: ClubSummary[] = [{ id: 'born', name: 'BORN Smashers', players: [
+    { id: 'ni', name: 'Nitin', email: 'nitin@smash-club.app', active: true, is_admin: true, club_id: 'born', last_seen_at: new Date(Date.now() - 5 * 3600000).toISOString() },
+    { id: 'ar', name: 'Arun', email: null, active: true, is_admin: true, club_id: 'born' },
+  ] }];
   const settings: FullSettings = {
     club_name: 'Smash Club', court_start: '06:00', grace_minutes: 0, timezone: TZ,
     court_lat: null, court_lng: null, court_radius_m: 300,
@@ -78,6 +84,7 @@ export function demoApi(): Api {
   const emit = () => listeners.forEach((f) => f());
   const nowIso = () => new Date().toISOString();
 
+  const find = (id: string) => players.find((p) => p.id === id) ?? otherClubs.flatMap((c) => c.players).find((p) => p.id === id)!;
   const data = (): ClubData => ({
     settings, players, me: players[0], checkins, games, months, lineup, payments, today, month,
   });
@@ -127,9 +134,9 @@ export function demoApi(): Api {
         return id;
       },
       async setLogin(id, username) {
-        players.find((p) => p.id === id)!.email = `${username.trim().toLowerCase()}@smash-club.app`;
+        find(id).email = `${username.trim().toLowerCase()}@smash-club.app`;
       },
-      async updatePlayer(id, patch) { Object.assign(players.find((p) => p.id === id)!, patch); },
+      async updatePlayer(id, patch) { Object.assign(find(id), patch); },
       async resolveGame(id, keep) {
         const i = games.findIndex((g) => g.id === id);
         if (keep) games[i].flagged_by = null; else games.splice(i, 1);
@@ -140,6 +147,23 @@ export function demoApi(): Api {
         if (iso) checkins.push({ player_id: id, play_date: date, checked_in_at: iso });
       },
       async saveSettings(patch) { Object.assign(settings, patch); },
+    },
+    super: {
+      async listClubs() {
+        return structuredClone([{ id: 'smash', name: settings.club_name, players }, ...otherClubs]);
+      },
+      async createClub(name) {
+        const id = `c${otherClubs.length + 1}`;
+        otherClubs.push({ id, name, players: [] });
+        return id;
+      },
+      async addPlayer(clubId, name, is_admin) {
+        if (clubId === 'smash') { const id = `p${players.length}`; players.push({ id, name, email: null, active: true, is_admin, club_id: 'smash' }); return id; }
+        const c = otherClubs.find((x) => x.id === clubId)!;
+        const id = `${clubId}-${c.players.length}`;
+        c.players.push({ id, name, email: null, active: true, is_admin, club_id: clubId });
+        return id;
+      },
     },
   };
 }

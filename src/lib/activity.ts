@@ -51,7 +51,7 @@ const MEDAL_EMOJI = { gold: '🥇', silver: '🥈', bronze: '🥉' } as const;
 export function dailyRecap(m: Model, url: string) {
   const d = m.data;
   const dateLabel = new Intl.DateTimeFormat('en-IN', { timeZone: m.tz, weekday: 'short', day: 'numeric', month: 'short' }).format(new Date());
-  const lines = [`🏸 *Smash Club · ${dateLabel}*`, ''];
+  const lines = [`🏸 *${d.settings.club_name} · ${dateLabel}*`, ''];
 
   const podium = m.todayArrivals.filter((x) => x.medal);
   if (podium.length) {
