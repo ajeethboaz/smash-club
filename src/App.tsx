@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Component, useEffect, useState, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { api, emailToUsername } from './lib/api';
 import { ClubProvider } from './club';
@@ -9,6 +9,26 @@ import LogGame from './pages/LogGame';
 import Board from './pages/Board';
 import Pay from './pages/Pay';
 import Admin from './pages/Admin';
+
+/** Shows the error instead of a blank screen if anything crashes while rendering. */
+class CrashGuard extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error) { console.error(error); }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div className="center-screen">
+        <div className="stack" style={{ maxWidth: 320 }}>
+          <h1 className="h2">Something went wrong</h1>
+          <p className="small muted" style={{ margin: 0 }}>Please send this to Ajeeth: <b>{this.state.error.message}</b></p>
+          <button className="btn btn-green" onClick={() => location.reload()}>Try again</button>
+          <button className="btn btn-ghost" onClick={() => void api.signOut().finally(() => location.reload())}>Sign out</button>
+        </div>
+      </div>
+    );
+  }
+}
 
 type Gate = 'loading' | 'signed-out' | 'not-listed' | 'in';
 
@@ -28,6 +48,7 @@ export default function App() {
   }, []);
 
   return (
+    <CrashGuard>
     <ToastProvider>
       {api.demo && <div className="demo-banner">Demo mode: sample data, nothing is saved</div>}
       {gate === 'loading' && <div className="center-screen muted">Loading…</div>}
@@ -60,5 +81,6 @@ export default function App() {
         </BrowserRouter>
       )}
     </ToastProvider>
+    </CrashGuard>
   );
 }

@@ -13,7 +13,9 @@ export function buildModel(d: ClubData) {
   const monthLineup = d.lineup.filter((x) => x.month === d.month);
   const playing = new Set(monthLineup.filter((x) => x.playing).map((x) => x.player_id));
   // Rank everyone playing this month plus anyone active (so new players show up).
-  const roster: Player[] = d.players.filter((p) => playing.has(p.id) || (p.active && !monthLineup.some((x) => x.player_id === p.id)));
+  const listed: Player[] = d.players.filter((p) => playing.has(p.id) || (p.active && !monthLineup.some((x) => x.player_id === p.id)));
+  // Always include whoever is signed in, so their own stats exist even if they're off this month's line-up.
+  const roster: Player[] = listed.some((p) => p.id === d.me.id) ? listed : [...listed, d.me];
 
   const days = attendanceDays(d.checkins, d.settings);
   const att = attendanceStats(roster, days, d.settings, d.month, d.today, playing);
