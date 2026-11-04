@@ -110,7 +110,7 @@ export function Steps({ total, done, color }: { total: number; done: number; col
 export function BottomNav() {
   const items = [
     { to: '/', icon: 'home', label: 'Home' },
-    { to: '/log', icon: 'plusCircle', label: 'Log game' },
+    { to: '/win', icon: 'trophy', label: 'Log win' },
     { to: '/board', icon: 'board', label: 'Board' },
     { to: '/pay', icon: 'card', label: 'Pay' },
   ];

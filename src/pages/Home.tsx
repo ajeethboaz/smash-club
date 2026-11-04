@@ -99,6 +99,48 @@ export default function Home() {
           {me.is_admin && <Link to="/admin" className="icon-btn" aria-label="Admin settings" style={{ background: 'var(--ink-2)', color: '#F4F5EF' }}><Icon name="gear" size={22} /></Link>}
         </header>
 
+        {m.meToday ? (
+          <div className="cta cta-hero celebrate" style={{ background: m.meToday.medal ? MEDAL_COLOR[m.meToday.medal].fill : m.meToday.onTime ? 'var(--lime)' : '#F5B347' }}>
+            <span className="row" style={{ gap: 14 }}>
+              {m.meToday.medal ? <MedalSvg medal={m.meToday.medal} size={46} text={String(MEDALS.indexOf(m.meToday.medal) + 1)} /> : <span className="cta-icon"><Icon name="check" color="var(--lime)" width={3} /></span>}
+              <span className="stack" style={{ gap: 2 }}>
+                <span className="cta-title" style={{ fontSize: 24 }}>{m.meToday.medal ? `${MEDAL_COLOR[m.meToday.medal].label}!` : m.meToday.onTime ? "You're in, on time" : "You're in"}</span>
+                <span className="small">Checked in {fmtTime(m.meToday.at, m.tz)}{m.meToday.onTime ? ` · on-time streak ${a.streak}` : ' · late today, streak resets'}</span>
+              </span>
+            </span>
+          </div>
+        ) : null}
+        {m.meToday && (
+          <button onClick={() => { if (confirmUndo) { setConfirmUndo(false); void run(() => api.undoCheckIn(), 'Check-in removed'); } else setConfirmUndo(true); }}
+            disabled={busy}
+            style={{ alignSelf: 'center', background: 'none', border: 0, color: confirmUndo ? '#F5B347' : 'var(--muted-dark, #9AA79F)', fontSize: 14, fontWeight: confirmUndo ? 700 : 500, textDecoration: 'underline', padding: '4px 8px' }}>
+            {confirmUndo ? 'Tap again to undo your check-in' : 'Checked in by mistake? Undo'}
+          </button>
+        )}
+        {!m.meToday && (
+          <button className="cta cta-hero cta-glow-gold" onClick={checkIn} disabled={busy} style={{ background: late ? '#F5B347' : 'var(--gold)' }}>
+            <span className="stack" style={{ gap: 4 }}>
+              <span className="cta-title">{late ? 'Check in' : openMedal ? `Claim ${openMedal}` : 'Check in'}</span>
+              <span className="small" style={{ fontWeight: 500 }}>
+                {late ? 'Gates closed. You still count for today.'
+                  : minsLeft > 120 ? `Gates open at ${startLabel}. Streak: ${a.streak} days`
+                  : `${minsLeft} min to gates · ${openMedal ? `${openMedal} is still open` : 'keep your streak alive'}`}
+              </span>
+            </span>
+            <span className="cta-icon"><Icon name="pin" color="var(--gold)" width={2.5} /></span>
+          </button>
+        )}
+
+        <Link to="/win" className="cta cta-hero cta-glow-lime" style={{ background: 'var(--lime)' }}>
+          <span className="stack" style={{ gap: 4 }}>
+            <span className="cta-title">I won!</span>
+            <span className="small" style={{ fontWeight: 500 }}>Log the points and who you played with · {gameNudge}</span>
+          </span>
+          <span className="cta-icon"><Icon name="trophy" color="var(--lime)" width={2.5} /></span>
+        </Link>
+
+        <div className="divider" />
+
         <div className="grid2">
           <div className="tile-dark">
             <span className="label" style={{ color: 'var(--gold)' }}>Showing up</span>
@@ -118,38 +160,6 @@ export default function Home() {
         </div>
         <Podium spots={arrivalSpots} />
 
-        {m.meToday ? (
-          <div className="cta celebrate" style={{ background: m.meToday.medal ? MEDAL_COLOR[m.meToday.medal].fill : m.meToday.onTime ? 'var(--lime)' : '#F5B347' }}>
-            <span className="row" style={{ gap: 14 }}>
-              {m.meToday.medal ? <MedalSvg medal={m.meToday.medal} size={46} text={String(MEDALS.indexOf(m.meToday.medal) + 1)} /> : <span className="cta-icon"><Icon name="check" color="var(--lime)" width={3} /></span>}
-              <span className="stack" style={{ gap: 2 }}>
-                <span className="cta-title" style={{ fontSize: 24 }}>{m.meToday.medal ? `${MEDAL_COLOR[m.meToday.medal].label}!` : m.meToday.onTime ? "You're in, on time" : "You're in"}</span>
-                <span className="small">Checked in {fmtTime(m.meToday.at, m.tz)}{m.meToday.onTime ? ` · on-time streak ${a.streak}` : ' · late today, streak resets'}</span>
-              </span>
-            </span>
-          </div>
-        ) : null}
-        {m.meToday && (
-          <button onClick={() => { if (confirmUndo) { setConfirmUndo(false); void run(() => api.undoCheckIn(), 'Check-in removed'); } else setConfirmUndo(true); }}
-            disabled={busy}
-            style={{ alignSelf: 'center', background: 'none', border: 0, color: confirmUndo ? '#F5B347' : 'var(--muted-dark, #9AA79F)', fontSize: 14, fontWeight: confirmUndo ? 700 : 500, textDecoration: 'underline', padding: '4px 8px' }}>
-            {confirmUndo ? 'Tap again to undo your check-in' : 'Checked in by mistake? Undo'}
-          </button>
-        )}
-        {!m.meToday && (
-          <button className="cta" onClick={checkIn} disabled={busy} style={{ background: late ? '#F5B347' : 'var(--gold)' }}>
-            <span className="stack" style={{ gap: 4 }}>
-              <span className="cta-title">{late ? 'Check in' : openMedal ? `Claim ${openMedal}` : 'Check in'}</span>
-              <span className="small" style={{ fontWeight: 500 }}>
-                {late ? 'Gates closed. You still count for today.'
-                  : minsLeft > 120 ? `Gates open at ${startLabel}. Streak: ${a.streak} days`
-                  : `${minsLeft} min to gates · ${openMedal ? `${openMedal} is still open` : 'keep your streak alive'}`}
-              </span>
-            </span>
-            <span className="cta-icon"><Icon name="pin" color="var(--gold)" width={2.5} /></span>
-          </button>
-        )}
-
         <div className="divider" />
 
         <div className="between">
@@ -157,13 +167,6 @@ export default function Home() {
           <span className="chip" style={{ background: 'var(--lime)', color: 'var(--ink)' }}>Wins this week</span>
         </div>
         <Podium spots={kingSpots} />
-        <Link to="/log" className="cta" style={{ background: 'var(--lime)' }}>
-          <span className="stack" style={{ gap: 4 }}>
-            <span className="cta-title">Log a game</span>
-            <span className="small" style={{ fontWeight: 500 }}>{gameNudge}</span>
-          </span>
-          <span className="cta-icon"><Icon name="plus" color="var(--lime)" width={2.5} /></span>
-        </Link>
       </section>
 
       <div className="page">

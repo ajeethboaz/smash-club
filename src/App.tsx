@@ -47,7 +47,8 @@ export default function App() {
             <div className="app">
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/log" element={<LogGame />} />
+                <Route path="/win" element={<LogGame />} />
+                <Route path="/log" element={<Navigate to="/win" replace />} />
                 <Route path="/board" element={<Board />} />
                 <Route path="/pay" element={<Pay />} />
                 <Route path="/admin" element={<Admin />} />
