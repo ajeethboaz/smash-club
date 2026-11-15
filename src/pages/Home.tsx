@@ -135,7 +135,7 @@ export default function Home() {
         <Link to="/win" className="cta cta-hero cta-glow-lime" style={{ background: 'var(--lime)' }}>
           <span className="stack" style={{ gap: 4 }}>
             <span className="cta-title">I won!</span>
-            <span className="small" style={{ fontWeight: 500 }}>Log the points and who you played with · {gameNudge}</span>
+            <span className="small" style={{ fontWeight: 500 }}>Log the points and who you played with (lost games too) · {gameNudge}</span>
           </span>
           <span className="cta-icon"><Icon name="trophy" color="var(--lime)" width={2.5} /></span>
         </Link>

@@ -4,14 +4,15 @@ import { useClub } from '../club';
 import { api } from '../lib/api';
 import { addDays, dayLabel } from '../lib/engine';
 
-/** "I won!" page: the logged-in player records a win — partner, who they beat, and the points. */
+/** "I won!" page: the logged-in player records a game they won or lost — partner, opponents, and the points. */
 export default function LogGame() {
   const { m, run } = useClub();
   const nav = useNavigate();
   const me = m.data.me.id;
   const [format, setFormat] = useState<'doubles' | 'singles'>('doubles');
   const [partner, setPartner] = useState<string | null>(null);
-  const [beat, setBeat] = useState<string[]>([]);
+  const [beat, setBeat] = useState<string[]>([]); // the other side, whether you beat them or they beat you
+  const [won, setWon] = useState(true);
   const [score, setScore] = useState({ us: 21, them: 15 });
   const [busy, setBusy] = useState(false);
   const today = m.data.today;
@@ -43,12 +44,16 @@ export default function LogGame() {
   const bump = (side: 'us' | 'them', by: number) => setScore((s) => ({ ...s, [side]: Math.max(0, Math.min(40, s[side] + by)) }));
   const type = (side: 'us' | 'them', v: string) => setScore((s) => ({ ...s, [side]: Math.min(40, Number(v.replace(/\D/g, '')) || 0) }));
 
-  const winners = doubles ? (partner ? [me, partner] : [me]) : [me];
-  const teamsReady = winners.length === size && beat.length === size;
-  const scoreOk = score.us > score.them;
+  const mySide = doubles ? (partner ? [me, partner] : [me]) : [me];
+  const teamsReady = mySide.length === size && beat.length === size;
+  const changeResult = (w: boolean) => {
+    if (w !== won) setScore((s) => ({ us: s.them, them: s.us }));
+    setWon(w);
+  };
+  const scoreOk = won ? score.us > score.them : score.them > score.us;
   const save = async () => {
     setBusy(true);
-    const ok = await run(() => api.logGame(format, winners, beat, score.us, score.them, late ? day : undefined), late ? `Win saved for ${dayLabel(day, today)}!` : 'Win saved!');
+    const ok = await run(() => api.logGame(format, mySide, beat, score.us, score.them, late ? day : undefined), `${won ? 'Win' : 'Game'} saved${late ? ` for ${dayLabel(day, today)}` : ''}!`);
     setBusy(false);
     if (ok) nav('/');
   };
@@ -78,8 +83,13 @@ export default function LogGame() {
   return (
     <div className="page">
       <div className="stack" style={{ gap: 4 }}>
-        <h1 className="h1">You won!</h1>
-        <span className="small muted">Log it now, while everyone still remembers the score.</span>
+        <h1 className="h1">{won ? 'You won!' : 'Log a game'}</h1>
+        <span className="small muted">{won ? 'Log it now, while everyone still remembers the score.' : 'Lost one? Log it anyway. You still get points for playing.'}</span>
+      </div>
+
+      <div className="seg" role="group" aria-label="Result">
+        <button aria-pressed={won} onClick={() => changeResult(true)}>I won</button>
+        <button aria-pressed={!won} onClick={() => changeResult(false)}>I lost</button>
       </div>
 
       <section className="card" style={{ gap: 8 }}>
@@ -114,7 +124,7 @@ export default function LogGame() {
 
       <section className="card">
         <div className="between">
-          <h2 className="h3">Who did you beat?</h2>
+          <h2 className="h3">{won ? 'Who did you beat?' : 'Who beat you?'}</h2>
           <span className="tiny muted">{beat.length}/{size}</span>
         </div>
         {pills((id) => beat.includes(id), chooseBeat, (id) => id === partner)}
@@ -127,12 +137,12 @@ export default function LogGame() {
           <span className="num muted" style={{ fontSize: 32, marginTop: 40 }}>–</span>
           {scoreBox('them', doubles ? 'Their team' : 'Them')}
         </div>
-        {!scoreOk && <p className="small" style={{ margin: 0, color: 'var(--warn)' }}>Your points need to be higher than theirs for a win.</p>}
+        {!scoreOk && <p className="small" style={{ margin: 0, color: 'var(--warn)' }}>{won ? 'Your points need to be higher than theirs for a win.' : 'Their points need to be higher than yours for a loss.'}</p>}
       </section>
 
       <p className="tiny muted" style={{ margin: 0 }}>Green dot = checked in {late ? 'that day' : 'today'}. Everyone in the game can flag the score for 24 hours if it looks wrong.</p>
       <button className="btn btn-lime" style={{ height: 60, borderRadius: 18, fontSize: 18 }} disabled={!teamsReady || !scoreOk || busy} onClick={save}>
-        {teamsReady ? 'Save my win' : doubles && !partner ? 'Pick your partner' : `Pick who you beat (${beat.length}/${size})`}
+        {teamsReady ? (won ? 'Save my win' : 'Save game') : doubles && !partner ? 'Pick your partner' : `Pick who ${won ? 'you beat' : 'beat you'} (${beat.length}/${size})`}
       </button>
       <Link to="/" className="small" style={{ alignSelf: 'center', color: 'var(--muted)' }}>Cancel</Link>
     </div>
