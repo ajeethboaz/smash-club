@@ -108,8 +108,8 @@ export function demoApi(): Api {
       const i = checkins.findIndex((c) => c.player_id === 'aj' && c.play_date === today);
       if (i >= 0) checkins.splice(i, 1);
     },
-    async logGame(format, a, b, sa, sb) {
-      games.push({ id: `g${games.length}`, played_at: nowIso(), format, score_a: sa, score_b: sb, flagged_by: null, a, b });
+    async logGame(format, a, b, sa, sb, playedOn) {
+      games.push({ id: `g${games.length}`, played_at: playedOn ? ist(playedOn, 390) : nowIso(), created_at: nowIso(), format, score_a: sa, score_b: sb, flagged_by: null, a, b });
     },
     async flagGame(id) { const g = games.find((x) => x.id === id); if (g) g.flagged_by = 'aj'; },
     async markPaid(m) {

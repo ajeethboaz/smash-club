@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useClub } from '../club';
 import { api } from '../lib/api';
+import { addDays, dayLabel } from '../lib/engine';
 
 /** "I won!" page: the logged-in player records a win — partner, who they beat, and the points. */
 export default function LogGame() {
@@ -13,11 +14,16 @@ export default function LogGame() {
   const [beat, setBeat] = useState<string[]>([]);
   const [score, setScore] = useState({ us: 21, them: 15 });
   const [busy, setBusy] = useState(false);
+  const today = m.data.today;
+  const [day, setDay] = useState(today);
+  const late = day !== today;
+  // Today plus the last 7 days.
+  const dayOptions = Array.from({ length: 8 }, (_, i) => addDays(today, -i));
   const doubles = format === 'doubles';
   const size = doubles ? 2 : 1;
 
-  // Players who checked in today come first, so the usual picks are at the top.
-  const here = new Set(m.todayArrivals.map((x) => x.player_id));
+  // Players who checked in that day come first, so the usual picks are at the top.
+  const here = new Set((late ? m.days.find((x) => x.date === day)?.arrivals ?? [] : m.todayArrivals).map((x) => x.player_id));
   const others = m.roster
     .filter((p) => p.active && p.id !== me)
     .sort((x, y) => Number(here.has(y.id)) - Number(here.has(x.id)) || x.name.localeCompare(y.name));
@@ -42,7 +48,7 @@ export default function LogGame() {
   const scoreOk = score.us > score.them;
   const save = async () => {
     setBusy(true);
-    const ok = await run(() => api.logGame(format, winners, beat, score.us, score.them), 'Win saved!');
+    const ok = await run(() => api.logGame(format, winners, beat, score.us, score.them, late ? day : undefined), late ? `Win saved for ${dayLabel(day, today)}!` : 'Win saved!');
     setBusy(false);
     if (ok) nav('/');
   };
@@ -51,7 +57,7 @@ export default function LogGame() {
     <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
       {others.map((p) => (
         <button key={p.id} className="pill" aria-pressed={selected(p.id)} disabled={disabled?.(p.id)} onClick={() => onPick(p.id)}>
-          {p.name}{here.has(p.id) && <span aria-label="here today" style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 4, background: 'var(--lime-edge)', marginLeft: 6, verticalAlign: 'middle' }} />}
+          {p.name}{here.has(p.id) && <span aria-label={late ? 'checked in that day' : 'here today'} style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 4, background: 'var(--lime-edge)', marginLeft: 6, verticalAlign: 'middle' }} />}
         </button>
       ))}
     </div>
@@ -75,6 +81,21 @@ export default function LogGame() {
         <h1 className="h1">You won!</h1>
         <span className="small muted">Log it now, while everyone still remembers the score.</span>
       </div>
+
+      <section className="card" style={{ gap: 8 }}>
+        <div className="between">
+          <h2 className="h3">When did you play?</h2>
+          {late && <button className="tiny" onClick={() => setDay(today)} style={{ border: 0, background: 'none', color: 'var(--muted)', padding: 0 }}>Back to today</button>}
+        </div>
+        <div className="row" style={{ gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
+          {dayOptions.map((d) => (
+            <button key={d} className="pill" aria-pressed={day === d} onClick={() => setDay(d)} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+              {dayLabel(d, today)}
+            </button>
+          ))}
+        </div>
+        {late && <p className="tiny muted" style={{ margin: 0 }}>Counts for {dayLabel(day, today)} and shows a “logged late” tag. You can go back up to 7 days.</p>}
+      </section>
 
       <div className="seg" role="group" aria-label="Format">
         <button aria-pressed={doubles} onClick={() => changeFormat('doubles')}>Doubles</button>
@@ -109,7 +130,7 @@ export default function LogGame() {
         {!scoreOk && <p className="small" style={{ margin: 0, color: 'var(--warn)' }}>Your points need to be higher than theirs for a win.</p>}
       </section>
 
-      <p className="tiny muted" style={{ margin: 0 }}>Green dot = checked in today. Everyone in the game can flag the score for 24 hours if it looks wrong.</p>
+      <p className="tiny muted" style={{ margin: 0 }}>Green dot = checked in {late ? 'that day' : 'today'}. Everyone in the game can flag the score for 24 hours if it looks wrong.</p>
       <button className="btn btn-lime" style={{ height: 60, borderRadius: 18, fontSize: 18 }} disabled={!teamsReady || !scoreOk || busy} onClick={save}>
         {teamsReady ? 'Save my win' : doubles && !partner ? 'Pick your partner' : `Pick who you beat (${beat.length}/${size})`}
       </button>

@@ -38,7 +38,8 @@ export interface Api {
   load(): Promise<ClubData>;
   checkIn(): Promise<void>;
   undoCheckIn(): Promise<void>;
-  logGame(format: 'singles' | 'doubles', a: string[], b: string[], scoreA: number, scoreB: number): Promise<void>;
+  /** playedOn: YYYY-MM-DD for a game on an earlier day (up to 7 days back); leave out for today. */
+  logGame(format: 'singles' | 'doubles', a: string[], b: string[], scoreA: number, scoreB: number, playedOn?: string): Promise<void>;
   flagGame(id: string, reason: string): Promise<void>;
   markPaid(month: string): Promise<void>;
   admin: {
@@ -143,7 +144,7 @@ function supabaseApi(sb: SupabaseClient, url: string, key: string): Api {
         sb.from('clubs').select('*').eq('id', clubId).single(),
         sb.from('players').select('id,name,email,active,is_admin,is_super,club_id,last_seen_at').eq('club_id', clubId).order('name'),
         sb.from('checkins').select('player_id,play_date,checked_in_at').eq('club_id', clubId),
-        sb.from('games').select('id,played_at,format,score_a,score_b,flagged_by,game_players(player_id,team)').eq('club_id', clubId).order('played_at'),
+        sb.from('games').select('id,played_at,created_at,format,score_a,score_b,flagged_by,game_players(player_id,team)').eq('club_id', clubId).order('played_at'),
         sb.from('months').select('month,court_fee,cork_fee,other_fee').eq('club_id', clubId).order('month'),
         sb.from('month_players').select('month,player_id,playing').eq('club_id', clubId),
         sb.from('payments').select('month,player_id,marked_paid_at,confirmed_at').eq('club_id', clubId),
@@ -177,8 +178,9 @@ function supabaseApi(sb: SupabaseClient, url: string, key: string): Api {
     async undoCheckIn() {
       fail((await sb.rpc('undo_check_in')).error);
     },
-    async logGame(format, a, b, scoreA, scoreB) {
-      fail((await sb.rpc('log_game', { p_format: format, p_team_a: a, p_team_b: b, p_score_a: scoreA, p_score_b: scoreB })).error);
+    async logGame(format, a, b, scoreA, scoreB, playedOn) {
+      const args = { p_format: format, p_team_a: a, p_team_b: b, p_score_a: scoreA, p_score_b: scoreB };
+      fail((await sb.rpc('log_game', playedOn ? { ...args, p_played_on: playedOn } : args)).error);
     },
     async flagGame(id, reason) {
       fail((await sb.rpc('flag_game', { p_game: id, p_reason: reason })).error);

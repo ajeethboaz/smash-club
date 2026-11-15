@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useClub } from '../club';
 import { api } from '../lib/api';
-import { fmtTime, localMinutes, MEDALS, startMinutes, type Medal } from '../lib/engine';
+import { dayLabel, fmtTime, localMinutes, MEDALS, startMinutes, type Medal } from '../lib/engine';
 import { dailyRecap, whatsappLink } from '../lib/activity';
 import { Avatar, BADGE_ICON, Icon, MEDAL_COLOR, MedalSvg, Podium, Steps } from '../ui';
 
@@ -278,11 +278,11 @@ export default function Home() {
           {m.recentGames.length === 0 && <p className="small muted" style={{ margin: 0 }}>No games logged yet.</p>}
           {m.recentGames.map((r) => {
             const mine = r.winners.includes(me.id) || r.losers.includes(me.id);
-            const fresh = Date.now() - Date.parse(r.played_at) < 24 * 3600 * 1000;
+            const fresh = Date.now() - Date.parse(r.created_at ?? r.played_at) < 24 * 3600 * 1000;
             const [ws, ls] = r.score_a > r.score_b ? [r.score_a, r.score_b] : [r.score_b, r.score_a];
             return (
               <div key={r.id} className="between" style={{ fontSize: 15 }}>
-                <span><b>{r.winners.map(you).join(' & ')}</b> beat {r.losers.map(you).join(' & ')}{r.upset && <span className="chip" style={{ marginLeft: 6, background: 'var(--lime)', fontSize: 11, padding: '2px 6px' }}>upset</span>}</span>
+                <span><b>{r.winners.map(you).join(' & ')}</b> beat {r.losers.map(you).join(' & ')}{r.upset && <span className="chip" style={{ marginLeft: 6, background: 'var(--lime)', fontSize: 11, padding: '2px 6px' }}>upset</span>}{r.late && <span className="chip" title={`Played ${dayLabel(r.date, m.data.today)}, logged later`} style={{ marginLeft: 6, background: 'var(--line)', color: 'var(--muted)', fontSize: 11, padding: '2px 6px' }}>logged late · {dayLabel(r.date, m.data.today)}</span>}</span>
                 <span className="row" style={{ gap: 6, flexShrink: 0, whiteSpace: 'nowrap' }}>
                   <b>{ws}–{ls}</b>
                   {mine && fresh && <button aria-label="Flag this score" onClick={() => flag(r.id)} style={{ border: 0, background: 'none', color: 'var(--muted)', padding: 4 }}><Icon name="flag" size={16} /></button>}

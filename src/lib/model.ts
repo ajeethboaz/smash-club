@@ -51,7 +51,7 @@ export function buildModel(d: ClubData) {
     myBadges: badges(myAtt, myGames),
     trophies: { punctuality, ironMen, potm, giant },
     money,
-    recentGames: [...results].reverse().slice(0, 6),
+    recentGames: [...results].sort((x, y) => (y.created_at ?? y.played_at).localeCompare(x.created_at ?? x.played_at)).slice(0, 6),
     flaggedGames: d.games.filter((g) => g.flagged_by),
   };
 }

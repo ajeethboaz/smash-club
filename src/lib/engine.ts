@@ -6,7 +6,7 @@ export type Player = { id: string; name: string; active: boolean; is_admin: bool
 export type Settings = { court_start: string; grace_minutes: number; timezone: string };
 export type Checkin = { player_id: string; play_date: string; checked_in_at: string };
 export type Game = {
-  id: string; played_at: string; format: 'singles' | 'doubles';
+  id: string; played_at: string; created_at?: string; format: 'singles' | 'doubles';
   score_a: number; score_b: number; flagged_by: string | null; a: string[]; b: string[];
 };
 export type MonthRow = { month: string; court_fee: number; cork_fee: number; other_fee: number };
@@ -58,6 +58,14 @@ export function addDays(date: string, n: number) {
   const d = new Date(`${date}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
+}
+
+/** "Today", "Yesterday" or "Thu 12 Nov" for a YYYY-MM-DD date. */
+export function dayLabel(date: string, today: string) {
+  if (date === today) return 'Today';
+  if (date === addDays(today, -1)) return 'Yesterday';
+  return new Intl.DateTimeFormat('en-IN', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' })
+    .format(new Date(`${date}T00:00:00Z`));
 }
 
 // ─── Attendance track ──────────────────────────────────────────────────────
@@ -152,7 +160,8 @@ export function rankAttendance(stats: AttendanceStats[]) {
 // ─── Games track ───────────────────────────────────────────────────────────
 
 export type GameResult = Game & {
-  date: string; winners: string[]; losers: string[];
+  date: string; late: boolean; // late = logged on a later day than it was played
+  winners: string[]; losers: string[];
   upset: boolean; ratingGap: number; // gap the winners overcame (0 when not an upset)
 };
 
@@ -181,6 +190,7 @@ export function replayGames(games: Game[], players: Player[], tz: string) {
     const [wr, lr] = aWon ? [ra, rb] : [rb, ra];
     results.push({
       ...g, date: localDate(g.played_at, tz),
+      late: !!g.created_at && localDate(g.created_at, tz) !== localDate(g.played_at, tz),
       winners: aWon ? g.a : g.b, losers: aWon ? g.b : g.a,
       upset: wr < lr, ratingGap: wr < lr ? Math.round(lr - wr) : 0,
     });
