@@ -4,7 +4,6 @@ import { useClub } from '../club';
 import { api, emailToUsername } from '../lib/api';
 import { localMinutes, rupees } from '../lib/engine';
 import { Icon } from '../ui';
-import { AccountCard } from '../account';
 import { STATUS_LABEL } from './Pay';
 import { ago, dailyRecap, playerActivity, whatsappLink, type Usage } from '../lib/activity';
 
@@ -50,7 +49,7 @@ export default function Admin() {
   return (
     <div className="page">
       <header className="row" style={{ gap: 12 }}>
-        <Link to="/" className="icon-btn" aria-label="Back to home" style={{ background: '#fff', color: 'var(--ink)' }}><Icon name="back" size={22} /></Link>
+        <Link to="/me" className="icon-btn" aria-label="Back" style={{ background: '#fff', color: 'var(--ink)' }}><Icon name="back" size={22} /></Link>
         <h1 className="h1" style={{ fontSize: 28 }}>Admin</h1>
       </header>
 
@@ -270,7 +269,6 @@ export default function Admin() {
         </div>
       </section>
 
-      <AccountCard />
     </div>
   );
 }

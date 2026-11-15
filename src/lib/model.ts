@@ -41,7 +41,7 @@ export function buildModel(d: ClubData) {
   const punctuality = attRank[0];
   const ironMen = [...att.values()].filter((x) => x.strikes === 0 && x.days > 0).sort((a, b) => b.days - a.days);
   const potm = gameRank[0];
-  const giant = [...gms.values()].filter((x) => x.bestUpsetGap > 0).sort((a, b) => b.bestUpsetGap - a.bestUpsetGap)[0];
+  const teamPlayer = [...gms.values()].filter((x) => x.partnersThisMonth > 0).sort((a, b) => b.partnersThisMonth - a.partnersThisMonth || b.won - a.won)[0];
 
   const money = monthMoney(d.months.find((m) => m.month === d.month), monthLineup, d.payments.filter((p) => p.month === d.month));
 
@@ -49,7 +49,7 @@ export function buildModel(d: ClubData) {
     data: d, tz, name, roster, days, att, gms, attRank, gameRank, rankOf, rating, results,
     todayArrivals, meToday, nextMedal, kings, week, myAtt, myGames,
     myBadges: badges(myAtt, myGames),
-    trophies: { punctuality, ironMen, potm, giant },
+    trophies: { punctuality, ironMen, potm, teamPlayer },
     money,
     recentGames: [...results].sort((x, y) => (y.created_at ?? y.played_at).localeCompare(x.created_at ?? x.played_at)).slice(0, 6),
     flaggedGames: d.games.filter((g) => g.flagged_by),

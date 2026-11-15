@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import type { Medal } from './lib/engine';
 
 export const initials = (name: string) => name.slice(0, 2).toUpperCase();
@@ -32,6 +32,8 @@ const PATHS: Record<string, string> = {
   star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z',
   medal: 'M8 2h3l2 6M16 2h-3M12 9a6 6 0 100 12 6 6 0 000-12z',
   flag: 'M5 21V4h11l-2 4 2 4H5',
+  chevron: 'M9 6l6 6-6 6',
+  user: 'M12 4a4 4 0 100 8 4 4 0 000-8zM4 21c1.5-4 4.5-6 8-6s6.5 2 8 6',
 };
 
 export function Icon({ name, size = 24, color = 'currentColor', width = 2 }: { name: keyof typeof PATHS | string; size?: number; color?: string; width?: number }) {
@@ -44,7 +46,7 @@ export function Icon({ name, size = 24, color = 'currentColor', width = 2 }: { n
 
 export const BADGE_ICON: Record<string, string> = {
   'early-bird': 'sun', 'first-gold': 'crown', 'perfect-week': 'clock', 'streak-10': 'flame', 'streak-30': 'flame',
-  'podium-regular': 'trophy', 'first-win': 'target', 'hat-trick': 'bolt', 'giant-killer': 'shield',
+  'podium-regular': 'trophy', 'first-win': 'target', 'hat-trick': 'bolt',
   'team-player': 'users', king: 'crown', marathon: 'star',
 };
 
@@ -107,11 +109,16 @@ export function Steps({ total, done, color }: { total: number; done: number; col
   );
 }
 
+/** Screens that fill the whole phone and bring their own buttons (no bottom menu). */
+export const useFullScreen = () => useLocation().pathname === '/win';
+
 export function BottomNav() {
+  const full = useFullScreen();
+  if (full) return null;
   const items = [
     { to: '/', icon: 'home', label: 'Home' },
-    { to: '/win', icon: 'trophy', label: 'Log win' },
     { to: '/board', icon: 'board', label: 'Board' },
+    { to: '/me', icon: 'user', label: 'Me' },
     { to: '/pay', icon: 'card', label: 'Pay' },
   ];
   return (

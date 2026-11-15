@@ -57,13 +57,12 @@ describe('games', () => {
   const { results, rating } = replayGames(games, players, s.timezone);
   const st = gameStats(players, results, rating, '2026-11-01', '2026-11-03');
 
-  it('ignores flagged games and scores wins, losses and upsets', () => {
+  it('ignores flagged games and scores every win the same', () => {
     expect(results).toHaveLength(2);
     expect(st.get('aj')).toMatchObject({ played: 1, won: 1, points: 10 });
     expect(st.get('mo')).toMatchObject({ played: 1, lost: 1, points: 2 });
-    // Krishna won game 1 so was rated above Kanakaraj: Kanakaraj's win is an upset (+5).
-    expect(results[1].upset).toBe(true);
-    expect(st.get('ka')!.points).toBe(15);
+    // No bonus for beating a stronger side: every win is 10.
+    expect(st.get('ka')!.points).toBe(10);
   });
 
   it('crowns King of the Court by weekly wins', () => {
@@ -76,7 +75,8 @@ describe('games', () => {
     const days = attendanceDays([], s);
     const a = attendanceStats(players, days, s, '2026-11-01', '2026-11-03', new Set())!.get('ka')!;
     const b = badges(a, st.get('ka')!);
-    expect(b.find((x) => x.key === 'giant-killer')!.earned).toBe(true);
+    expect(b.find((x) => x.key === 'first-win')!.earned).toBe(true);
+    expect(b.some((x) => x.key === 'giant-killer')).toBe(false);
     expect(b.find((x) => x.key === 'first-gold')!.earned).toBe(false);
     expect(b.filter((x) => x.track === 'attendance')).toHaveLength(6);
   });

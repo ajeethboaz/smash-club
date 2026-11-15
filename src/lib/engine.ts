@@ -16,7 +16,8 @@ export type Payment = { month: string; player_id: string; marked_paid_at: string
 export type Medal = 'gold' | 'silver' | 'bronze';
 export const MEDALS: Medal[] = ['gold', 'silver', 'bronze'];
 
-export const POINTS = { win: 10, loss: 2, upset: 5 } as const;
+// Every win is worth the same: no bonus for who you beat.
+export const POINTS = { win: 10, loss: 2 } as const;
 export const START_RATING = 1200;
 const K = 24;
 
@@ -162,19 +163,18 @@ export function rankAttendance(stats: AttendanceStats[]) {
 export type GameResult = Game & {
   date: string; late: boolean; // late = logged on a later day than it was played
   winners: string[]; losers: string[];
-  upset: boolean; ratingGap: number; // gap the winners overcame (0 when not an upset)
 };
 
 export type GameStats = {
   player_id: string;
   played: number; won: number; lost: number; points: number; rating: number;
-  bestUpsetGap: number;
+  partnersThisMonth: number; // different partners won with this month (Team Player trophy)
   weekWins: number; weekMedals: Record<Medal, number>;
   everWin: boolean; hatTrick: boolean; partnersWonWith: number; partnersThisWeek: number;
-  upsetEver: boolean; everWeekGold: boolean; playedAllTime: number;
+  everWeekGold: boolean; playedAllTime: number;
 };
 
-/** Replays every unflagged game in order: ratings (Elo), upsets and points. */
+/** Replays every unflagged game in order. The rating is internal only (a quiet tie-breaker), never shown. */
 export function replayGames(games: Game[], players: Player[], tz: string) {
   const rating = new Map(players.map((p) => [p.id, START_RATING]));
   const results: GameResult[] = [];
@@ -187,19 +187,17 @@ export function replayGames(games: Game[], players: Player[], tz: string) {
     const delta = K * ((aWon ? 1 : 0) - ea);
     for (const id of g.a) rating.set(id, (rating.get(id) ?? START_RATING) + delta);
     for (const id of g.b) rating.set(id, (rating.get(id) ?? START_RATING) - delta);
-    const [wr, lr] = aWon ? [ra, rb] : [rb, ra];
     results.push({
       ...g, date: localDate(g.played_at, tz),
       late: !!g.created_at && localDate(g.created_at, tz) !== localDate(g.played_at, tz),
       winners: aWon ? g.a : g.b, losers: aWon ? g.b : g.a,
-      upset: wr < lr, ratingGap: wr < lr ? Math.round(lr - wr) : 0,
     });
   }
   return { results, rating };
 }
 
 export function gamePoints(r: GameResult, playerId: string) {
-  if (r.winners.includes(playerId)) return POINTS.win + (r.upset ? POINTS.upset : 0);
+  if (r.winners.includes(playerId)) return POINTS.win;
   if (r.losers.includes(playerId)) return POINTS.loss;
   return 0;
 }
@@ -231,12 +229,12 @@ export function gameStats(
   for (const p of players) {
     const st: GameStats = {
       player_id: p.id, played: 0, won: 0, lost: 0, points: 0, rating: Math.round(rating.get(p.id) ?? START_RATING),
-      bestUpsetGap: 0, weekWins: 0, weekMedals: { gold: 0, silver: 0, bronze: 0 },
+      partnersThisMonth: 0, weekWins: 0, weekMedals: { gold: 0, silver: 0, bronze: 0 },
       everWin: false, hatTrick: false, partnersWonWith: 0, partnersThisWeek: 0,
-      upsetEver: false, everWeekGold: false, playedAllTime: 0,
+      everWeekGold: false, playedAllTime: 0,
     };
     let winRun = 0;
-    const partners = new Set<string>(), partnersWeek = new Set<string>();
+    const partners = new Set<string>(), partnersWeek = new Set<string>(), partnersMonth = new Set<string>();
     for (const r of results) {
       const inGame = r.winners.includes(p.id) || r.losers.includes(p.id);
       if (!inGame) continue;
@@ -246,21 +244,22 @@ export function gameStats(
       if (winRun >= 3) st.hatTrick = true;
       if (won) {
         st.everWin = true;
-        if (r.upset) st.upsetEver = true;
         for (const mate of r.winners) if (mate !== p.id) {
           partners.add(mate);
           if (r.date >= thisWeek) partnersWeek.add(mate);
+          if (monthOf(r.date) === month) partnersMonth.add(mate);
         }
       }
       if (monthOf(r.date) === month) {
         st.played++;
-        if (won) { st.won++; st.bestUpsetGap = Math.max(st.bestUpsetGap, r.ratingGap); } else st.lost++;
+        if (won) st.won++; else st.lost++;
         st.points += gamePoints(r, p.id);
       }
       if (won && r.date >= thisWeek) st.weekWins++;
     }
     st.partnersWonWith = partners.size;
     st.partnersThisWeek = partnersWeek.size;
+    st.partnersThisMonth = partnersMonth.size;
     for (const [w, podium] of medalsByWeek) {
       const mine = podium.find((x) => x.player_id === p.id);
       if (mine?.medal === 'gold') st.everWeekGold = true;
@@ -290,7 +289,6 @@ export function badges(a: AttendanceStats, g: GameStats): Badge[] {
     { key: 'podium-regular', name: 'Podium Regular', track: 'attendance', earned: a.medalsAllTime >= 10, hint: '10 arrival medals' },
     { key: 'first-win', name: 'First Win', track: 'games', earned: g.everWin, hint: 'Win a game' },
     { key: 'hat-trick', name: 'Hat-trick', track: 'games', earned: g.hatTrick, hint: '3 wins in a row' },
-    { key: 'giant-killer', name: 'Giant Killer', track: 'games', earned: g.upsetEver, hint: 'Beat a higher-rated side' },
     { key: 'team-player', name: 'Team Player', track: 'games', earned: g.partnersWonWith >= 3, hint: 'Win with 3 different partners' },
     { key: 'king', name: 'King of Court', track: 'games', earned: g.everWeekGold, hint: 'Most wins in a week' },
     { key: 'marathon', name: 'Marathon', track: 'games', earned: g.playedAllTime >= 50, hint: 'Play 50 games' },

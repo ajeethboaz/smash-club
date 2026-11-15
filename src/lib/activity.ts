@@ -70,7 +70,7 @@ export function dailyRecap(m: Model, url: string) {
     lines.push(`*Today's wins (${today.length})*`);
     for (const r of today.slice(-5)) {
       const [w, l] = r.score_a > r.score_b ? [r.score_a, r.score_b] : [r.score_b, r.score_a];
-      lines.push(`🏆 ${r.winners.map(m.name).join(' & ')} beat ${r.losers.map(m.name).join(' & ')} ${w}–${l}${r.upset ? ' ⚡ upset!' : ''}`);
+      lines.push(`🏆 ${r.winners.map(m.name).join(' & ')} beat ${r.losers.map(m.name).join(' & ')} ${w}–${l}`);
     }
   } else lines.push('🏆 No wins logged yet today. Won a game? Log it!');
 

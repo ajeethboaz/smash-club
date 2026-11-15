@@ -2,7 +2,7 @@ import { Component, useEffect, useState, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { api, emailToUsername } from './lib/api';
 import { ClubProvider } from './club';
-import { BottomNav, ToastProvider } from './ui';
+import { BottomNav, ToastProvider, useFullScreen } from './ui';
 import Login from './pages/Login';
 import Home from './pages/Home';
 import LogGame from './pages/LogGame';
@@ -10,6 +10,11 @@ import Board from './pages/Board';
 import Pay from './pages/Pay';
 import Admin from './pages/Admin';
 import Clubs from './pages/Clubs';
+import Me from './pages/Me';
+
+function Shell({ children }: { children: ReactNode }) {
+  return <div className={`app${useFullScreen() ? ' no-nav' : ''}`}>{children}</div>;
+}
 
 /** Shows the error instead of a blank screen if anything crashes while rendering. */
 class CrashGuard extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -66,18 +71,19 @@ export default function App() {
       {gate === 'in' && (
         <BrowserRouter>
           <ClubProvider>
-            <div className="app">
+            <Shell>
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/win" element={<LogGame />} />
                 <Route path="/log" element={<Navigate to="/win" replace />} />
                 <Route path="/board" element={<Board />} />
+                <Route path="/me" element={<Me />} />
                 <Route path="/pay" element={<Pay />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/clubs" element={<Clubs />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
-            </div>
+            </Shell>
             <BottomNav />
           </ClubProvider>
         </BrowserRouter>
