@@ -136,7 +136,11 @@ export default function Pay() {
       {mo && <section className="stack" style={{ gap: 10 }}>
         <div className="between" style={{ alignItems: 'baseline' }}>
           <span className="section-label">The crew</span>
-          <span className="small muted">Collected <b style={{ color: 'var(--ink)' }}>{rupees(money.collected)}</b> of {rupees(money.total)}</span>
+          <span className="small muted">Total {rupees(money.total)}</span>
+        </div>
+        <div className="grid2">
+          <div className="stat"><b style={{ color: 'var(--ok)', fontSize: 24 }}>{rupees(money.collected)}</b><span>Collected</span></div>
+          <div className="stat"><b style={{ color: money.total - money.collected > 0.005 ? 'var(--warn)' : 'var(--muted)', fontSize: 24 }}>{rupees(Math.max(0, money.total - money.collected))}</b><span>Pending · {toCollect} {toCollect === 1 ? 'person' : 'people'}</span></div>
         </div>
         {admin && toCollect > 0 && <span className="tiny muted">Tap Confirm when someone pays in full, or Part if they paid some of it.</span>}
         <div className="panel">
