@@ -141,6 +141,16 @@ export default function Home() {
         )}
       </section>
 
+      <Link to="/cam" className="panel" style={{ textDecoration: 'none' }}>
+        <span className="prow">
+          <span className="row" style={{ gap: 12 }}>
+            <span className="action-icon" style={{ width: 40, height: 40, background: 'var(--ink)' }}><Icon name="camera" size={20} color="var(--lime)" width={2.2} /></span>
+            <span className="stack" style={{ gap: 1 }}><b>Court Cam <span className="tag" style={{ color: 'var(--lime-text)' }}>BETA</span></b><span className="small muted">Smash speed, rallies, score and tips</span></span>
+          </span>
+          <Icon name="chevron" size={18} color="var(--muted)" width={2.4} />
+        </span>
+      </Link>
+
       <Link to="/board" className="panel" style={{ marginTop: 'auto', textDecoration: 'none' }}>
         <span className="prow">
           <span className="row" style={{ gap: 18 }}>

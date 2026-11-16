@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useClub } from '../club';
 import { api } from '../lib/api';
 import { addDays, dayLabel } from '../lib/engine';
@@ -11,11 +11,13 @@ export default function LogGame() {
   const nav = useNavigate();
   const me = m.data.me.id;
   const today = m.data.today;
-  const [won, setWon] = useState(true);
+  // Court Cam can hand over a finished score: { us, them }
+  const pre = (useLocation().state ?? null) as { us?: number; them?: number } | null;
+  const [won, setWon] = useState(pre?.us != null && pre?.them != null ? pre.us > pre.them : true);
   const [format, setFormat] = useState<'doubles' | 'singles'>('doubles');
   const [partner, setPartner] = useState<string | null>(null);
   const [against, setAgainst] = useState<string[]>([]);
-  const [score, setScore] = useState({ us: 21, them: 15 });
+  const [score, setScore] = useState(pre?.us != null && pre?.them != null ? { us: pre.us, them: pre.them } : { us: 21, them: 15 });
   const [day, setDay] = useState(today);
   const [busy, setBusy] = useState(false);
   const [dupBy, setDupBy] = useState<string | null>(null); // who already logged what looks like this game

@@ -11,6 +11,7 @@ import Pay from './pages/Pay';
 import Admin from './pages/Admin';
 import Clubs from './pages/Clubs';
 import Me from './pages/Me';
+import CourtCam from './pages/CourtCam';
 
 function Shell({ children }: { children: ReactNode }) {
   return <div className={`app${useFullScreen() ? ' no-nav' : ''}`}>{children}</div>;
@@ -78,6 +79,7 @@ export default function App() {
                 <Route path="/log" element={<Navigate to="/win" replace />} />
                 <Route path="/board" element={<Board />} />
                 <Route path="/me" element={<Me />} />
+                <Route path="/cam" element={<CourtCam />} />
                 <Route path="/pay" element={<Pay />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/clubs" element={<Clubs />} />
