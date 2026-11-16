@@ -5,7 +5,8 @@ import { api } from '../lib/api';
 import { addDays, dayLabel } from '../lib/engine';
 import { Icon, initials } from '../ui';
 
-/** Log a game, won or lost: who you played with and against, and the points. One screen, no scrolling. */
+/** Log a game, won or lost: who you played with and against, and the points. One screen, no scrolling.
+ *  Admins can also log a game they weren't in ("Others"): pick the winners and the losers. */
 export default function LogGame() {
   const { m, run } = useClub();
   const nav = useNavigate();
@@ -21,6 +22,10 @@ export default function LogGame() {
   const [day, setDay] = useState(today);
   const [busy, setBusy] = useState(false);
   const [dupBy, setDupBy] = useState<string | null>(null); // who already logged what looks like this game
+  const admin = m.data.me.is_admin;
+  const [forOthers, setForOthers] = useState(false); // admin logging a game they weren't in
+  const [winners, setWinners] = useState<string[]>([]);
+  const [losers, setLosers] = useState<string[]>([]);
   const doubles = format === 'doubles';
   const size = doubles ? 2 : 1;
   const late = day !== today;
@@ -28,33 +33,40 @@ export default function LogGame() {
 
   // Players who checked in that day come first, so the usual picks are at the top.
   const here = new Set((late ? m.days.find((x) => x.date === day)?.arrivals ?? [] : m.todayArrivals).map((x) => x.player_id));
-  const others = m.roster
-    .filter((p) => p.active && p.id !== me)
-    .sort((x, y) => Number(here.has(y.id)) - Number(here.has(x.id)) || x.name.localeCompare(y.name));
+  const byHere = (x: { id: string; name: string }, y: { id: string; name: string }) => Number(here.has(y.id)) - Number(here.has(x.id)) || x.name.localeCompare(y.name);
+  const others = m.roster.filter((p) => p.active && p.id !== me).sort(byHere);
+  const everyone = m.roster.filter((p) => p.active).sort(byHere);
 
   const pickPartner = (id: string) => setPartner((p) => (p === id ? null : id));
   const pickAgainst = (id: string) => setAgainst((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id].slice(-size)));
+  const pickWinner = (id: string) => setWinners((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id].slice(-size)));
+  const pickLoser = (id: string) => setLosers((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id].slice(-size)));
   const changeFormat = (f: 'doubles' | 'singles') => {
     setFormat(f);
-    if (f === 'singles') { setPartner(null); setAgainst((a) => a.slice(0, 1)); }
+    if (f === 'singles') { setPartner(null); setAgainst((a) => a.slice(0, 1)); setWinners((a) => a.slice(0, 1)); setLosers((a) => a.slice(0, 1)); }
   };
-  const changeResult = (w: boolean) => {
+  /** 'won' / 'lost' for your own game, 'others' for an admin logging someone else's. */
+  const changeMode = (mode: 'won' | 'lost' | 'others') => {
+    const w = mode !== 'lost'; // in "others" the left score is the winners'
     if (w !== won) setScore((s) => ({ us: s.them, them: s.us }));
     setWon(w);
+    setForOthers(mode === 'others');
   };
   const bump = (side: 'us' | 'them', by: number) => setScore((s) => ({ ...s, [side]: Math.max(0, Math.min(40, s[side] + by)) }));
   const type = (side: 'us' | 'them', v: string) => setScore((s) => ({ ...s, [side]: Math.min(40, Number(v.replace(/\D/g, '')) || 0) }));
 
-  const mySide = doubles ? (partner ? [me, partner] : [me]) : [me];
-  const ready = mySide.length === size && against.length === size;
+  // Side A gets score.us, side B gets score.them.
+  const sideA = forOthers ? winners : doubles ? (partner ? [me, partner] : [me]) : [me];
+  const sideB = forOthers ? losers : against;
+  const ready = sideA.length === size && sideB.length === size;
   const scoreOk = won ? score.us > score.them : score.them > score.us;
   // Any change to the form means it's no longer the game we warned about.
-  useEffect(() => setDupBy(null), [won, format, partner, against, score, day]);
+  useEffect(() => setDupBy(null), [won, format, partner, against, score, day, forOthers, winners, losers]);
 
   /** An unflagged game that day with the same players and the same score, if one exists. */
   const sameSet = (x: string[], y: string[]) => x.length === y.length && x.every((id) => y.includes(id));
   const existing = m.results.find((r) => r.date === day && r.format === format
-    && sameSet(won ? r.winners : r.losers, mySide) && sameSet(won ? r.losers : r.winners, against)
+    && sameSet(won ? r.winners : r.losers, sideA) && sameSet(won ? r.losers : r.winners, sideB)
     && Math.max(r.score_a, r.score_b) === Math.max(score.us, score.them) && Math.min(r.score_a, r.score_b) === Math.min(score.us, score.them));
   const loggedBy = (id: string | null | undefined) => (!id ? 'Someone' : id === me ? 'You' : m.name(id));
 
@@ -63,7 +75,7 @@ export default function LogGame() {
     setBusy(true);
     const ok = await run(async () => {
       try {
-        await api.logGame(format, mySide, against, score.us, score.them, late ? day : undefined, allowDuplicate);
+        await api.logGame(format, sideA, sideB, score.us, score.them, late ? day : undefined, allowDuplicate);
       } catch (e) {
         const msg = (e as Error).message;
         if (msg.startsWith('DUPLICATE:')) { // someone saved it a moment ago
@@ -73,21 +85,22 @@ export default function LogGame() {
         }
         throw e;
       }
-    }, `${won ? 'Win' : 'Game'} saved${late ? ` for ${dayLabel(day, today)}` : ''}!`);
+    }, `${forOthers ? 'Game' : won ? 'Win' : 'Game'} saved${late ? ` for ${dayLabel(day, today)}` : ''}!`);
     setBusy(false);
     if (ok) nav('/');
   };
 
   const faces = (kind: 'with' | 'against') => (
     <div className="faces">
-      {others.map((p) => {
-        const on = kind === 'with' ? partner === p.id : against.includes(p.id);
-        const taken = kind === 'with' ? against.includes(p.id) : partner === p.id;
+      {(forOthers ? everyone : others).map((p) => {
+        const on = forOthers ? (kind === 'with' ? winners : losers).includes(p.id) : kind === 'with' ? partner === p.id : against.includes(p.id);
+        const taken = forOthers ? (kind === 'with' ? losers : winners).includes(p.id) : kind === 'with' ? against.includes(p.id) : partner === p.id;
+        const pick = forOthers ? (kind === 'with' ? pickWinner : pickLoser) : kind === 'with' ? pickPartner : pickAgainst;
         return (
           <button key={p.id} className={`face ${kind}`} aria-pressed={on} disabled={taken}
-            onClick={() => (kind === 'with' ? pickPartner(p.id) : pickAgainst(p.id))}>
+            onClick={() => pick(p.id)}>
             <span className="avatar">{initials(p.name)}{here.has(p.id) && <span className="dot" aria-label={late ? 'checked in that day' : 'here today'} />}</span>
-            <span className="nm">{p.name}</span>
+            <span className="nm">{p.id === me ? 'You' : p.name}</span>
           </button>
         );
       })}
@@ -103,7 +116,9 @@ export default function LogGame() {
     </div>
   );
 
-  const missing = doubles && !partner ? 'Pick your partner' : !ready ? `Pick who you played (${against.length}/${size})` : !scoreOk ? (won ? 'Your score must be higher' : 'Their score must be higher') : null;
+  const missing = forOthers
+    ? winners.length < size ? `Pick the winner${size > 1 ? 's' : ''} (${winners.length}/${size})` : losers.length < size ? `Pick who lost (${losers.length}/${size})` : !scoreOk ? "The winners' score must be higher" : null
+    : doubles && !partner ? 'Pick your partner' : !ready ? `Pick who you played (${against.length}/${size})` : !scoreOk ? (won ? 'Your score must be higher' : 'Their score must be higher') : null;
 
   return (
     <>
@@ -117,9 +132,11 @@ export default function LogGame() {
         </header>
 
         <div className="tabs big" role="group" aria-label="Result">
-          <button aria-pressed={won} onClick={() => changeResult(true)}>I won</button>
-          <button aria-pressed={!won} onClick={() => changeResult(false)}>I lost</button>
+          <button aria-pressed={!forOthers && won} onClick={() => changeMode('won')}>I won</button>
+          <button aria-pressed={!forOthers && !won} onClick={() => changeMode('lost')}>I lost</button>
+          {admin && <button aria-pressed={forOthers} onClick={() => changeMode('others')}>Others</button>}
         </div>
+        {forOthers && <span className="small muted" style={{ marginTop: -10 }}>Log a game you didn't play in. Only admins can do this.</span>}
 
         <div className="row" style={{ gap: 8 }}>
           <button className="chip-btn" aria-pressed={doubles} onClick={() => changeFormat('doubles')}>Doubles</button>
@@ -127,22 +144,22 @@ export default function LogGame() {
           {late && <span className="tag" style={{ marginLeft: 'auto' }}>Logged late · {dayLabel(day, today)}</span>}
         </div>
 
-        {doubles && (
+        {(doubles || forOthers) && (
           <section className="stack" style={{ gap: 10 }}>
-            <span className="section-label">With</span>
+            <span className="section-label">{forOthers ? 'Winners' : 'With'}</span>
             {faces('with')}
           </section>
         )}
 
         <section className="stack" style={{ gap: 10 }}>
-          <span className="section-label">Against</span>
+          <span className="section-label">{forOthers ? 'Lost' : 'Against'}</span>
           {faces('against')}
         </section>
 
         <section className="score-row" aria-label="Points">
-          {scoreSide('us', doubles ? 'your team' : 'your')}
+          {scoreSide('us', forOthers ? 'winners' : doubles ? 'your team' : 'your')}
           <span className="muted" style={{ fontSize: 15, fontWeight: 700 }}>vs</span>
-          {scoreSide('them', doubles ? 'their team' : 'their')}
+          {scoreSide('them', forOthers ? 'losers' : doubles ? 'their team' : 'their')}
         </section>
       </div>
 
@@ -158,7 +175,7 @@ export default function LogGame() {
             </div>
           </div>
         ) : (
-          <button className="save-btn" disabled={!!missing || busy} onClick={() => save()}>{missing ?? (won ? 'Save win' : 'Save game')}</button>
+          <button className="save-btn" disabled={!!missing || busy} onClick={() => save()}>{missing ?? (!forOthers && won ? 'Save win' : 'Save game')}</button>
         )}
       </div>
     </>
