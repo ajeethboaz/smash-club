@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useClub } from '../club';
 import { api, emailToUsername } from '../lib/api';
@@ -25,6 +25,8 @@ function zonedIso(date: string, hhmm: string, tz: string) {
 export default function Admin() {
   const { m, run } = useClub();
   const d = m.data;
+  // Opened from Pay's "Costs & payments" button: jump to the costs card.
+  useEffect(() => { if (location.hash === '#costs') document.getElementById('costs')?.scrollIntoView(); }, []);
   const mo = d.months.find((x) => x.month === d.month);
   const [fees, setFees] = useState({ court: String(mo?.court_fee ?? 0), cork: String(mo?.cork_fee ?? 0), other: String(mo?.other_fee ?? 0) });
   const [newName, setNewName] = useState('');
@@ -111,7 +113,7 @@ export default function Admin() {
         );
       })()}
 
-      <section className="card">
+      <section className="card" id="costs" style={{ scrollMarginTop: 16 }}>
         <h2 className="h3">{monthName} costs</h2>
         <div className="grid3">
           {([['court', 'Court'], ['cork', 'Cork'], ['other', 'Other']] as const).map(([k, label]) => (

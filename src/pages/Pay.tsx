@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useClub } from '../club';
 import { api } from '../lib/api';
 import { rupees, type PayStatus } from '../lib/engine';
@@ -20,7 +21,14 @@ export default function Pay() {
 
   return (
     <div className="page">
-      <div className="between"><h1 className="h1">Payments</h1><span className="small muted">{monthName}</span></div>
+      <div className="between">
+        <span className="stack" style={{ gap: 2 }}><h1 className="h1">Payments</h1><span className="small muted">{monthName}</span></span>
+        {d.me.is_admin && (
+          <Link to="/admin#costs" className="chip-btn" style={{ display: 'flex', alignItems: 'center', gap: 6, height: 44, textDecoration: 'none', color: 'var(--ink)', fontWeight: 700 }}>
+            <Icon name="gear" size={18} />Costs &amp; payments
+          </Link>
+        )}
+      </div>
 
       <section className="card" style={{ background: 'var(--green)', color: '#F4F5EF', borderRadius: 28, padding: 22 }}>
         <span className="small" style={{ color: 'var(--soft-dark)' }}>Your share this month</span>

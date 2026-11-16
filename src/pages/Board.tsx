@@ -16,6 +16,7 @@ export default function Board() {
   const setTab = (t: Tab) => setParams(t === 'games' ? {} : { tab: t }, { replace: true });
   const [mine, setMine] = useState(false);
   const [showTrophies, setShowTrophies] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const me = m.data.me.id;
   const you = (id: string) => (id === me ? 'You' : m.name(id));
   const monthName = new Date(`${m.data.month}T00:00:00Z`).toLocaleString('en-IN', { month: 'long', timeZone: 'UTC' });
@@ -137,6 +138,8 @@ export default function Board() {
                 {rs.map((r) => {
                   const inIt = r.winners.includes(me) || r.losers.includes(me);
                   const fresh = Date.now() - Date.parse(r.created_at ?? r.played_at) < 24 * 3600 * 1000;
+                  const canDelete = m.data.me.is_admin || (r.logged_by === me && fresh);
+                  const asking = confirmDelete === r.id;
                   const [ws, ls] = r.score_a > r.score_b ? [r.score_a, r.score_b] : [r.score_b, r.score_a];
                   return (
                     <div key={r.id} className="prow">
@@ -146,7 +149,16 @@ export default function Board() {
                       </span>
                       <span className="row" style={{ gap: 2, flexShrink: 0 }}>
                         <span className="num" style={{ fontSize: 17 }}>{ws}–{ls}</span>
-                        {inIt && fresh && (
+                        {canDelete ? (
+                          asking ? (
+                            <button className="chip-btn" style={{ height: 32, padding: '0 12px', marginLeft: 6, background: 'var(--warn)', color: '#fff', fontWeight: 700 }}
+                              onClick={() => { setConfirmDelete(null); void run(() => api.deleteGame(r.id), 'Game deleted'); }}>Delete?</button>
+                          ) : (
+                            <button className="round-btn" style={{ width: 36, height: 36, background: 'none' }} aria-label="Delete this game" onClick={() => setConfirmDelete(r.id)}>
+                              <Icon name="trash" size={16} color="var(--muted)" />
+                            </button>
+                          )
+                        ) : inIt && fresh && (
                           <button className="round-btn" style={{ width: 36, height: 36, background: 'none' }} aria-label="Flag this score" onClick={() => flag(r.id)}>
                             <Icon name="flag" size={16} color="var(--muted)" />
                           </button>
@@ -158,7 +170,7 @@ export default function Board() {
               </div>
             </section>
           ))}
-          <p className="tiny muted" style={{ margin: 0 }}>Players in a game can flag its score for 24 hours after it's logged.</p>
+          <p className="tiny muted" style={{ margin: 0 }}>Logged a game by mistake? Delete it with the bin icon within 24 hours. Think someone else got a score wrong? Flag it.</p>
         </>
       )}
     </div>

@@ -111,6 +111,7 @@ export function demoApi(): Api {
     async logGame(format, a, b, sa, sb, playedOn, _allowDuplicate) {
       games.push({ id: `g${games.length}`, played_at: playedOn ? ist(playedOn, 390) : nowIso(), created_at: nowIso(), logged_by: 'aj', format, score_a: sa, score_b: sb, flagged_by: null, a, b });
     },
+    async deleteGame(id) { const i = games.findIndex((x) => x.id === id); if (i >= 0) games.splice(i, 1); },
     async flagGame(id) { const g = games.find((x) => x.id === id); if (g) g.flagged_by = 'aj'; },
     async markPaid(m) {
       const p = payments.find((x) => x.month === m && x.player_id === 'aj');

@@ -41,6 +41,8 @@ export interface Api {
   /** playedOn: YYYY-MM-DD for a game on an earlier day (up to 7 days back); leave out for today. */
   logGame(format: 'singles' | 'doubles', a: string[], b: string[], scoreA: number, scoreB: number, playedOn?: string, allowDuplicate?: boolean): Promise<void>;
   flagGame(id: string, reason: string): Promise<void>;
+  /** Your own game within 24 hours; admins any game. */
+  deleteGame(id: string): Promise<void>;
   markPaid(month: string): Promise<void>;
   admin: {
     saveMonth(m: MonthRow): Promise<void>;
@@ -183,6 +185,9 @@ function supabaseApi(sb: SupabaseClient, url: string, key: string): Api {
       if (playedOn) args.p_played_on = playedOn;
       if (allowDuplicate) args.p_allow_duplicate = true;
       fail((await sb.rpc('log_game', args)).error);
+    },
+    async deleteGame(id) {
+      fail((await sb.rpc('delete_game', { p_game: id })).error);
     },
     async flagGame(id, reason) {
       fail((await sb.rpc('flag_game', { p_game: id, p_reason: reason })).error);

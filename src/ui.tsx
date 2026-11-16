@@ -33,6 +33,7 @@ const PATHS: Record<string, string> = {
   medal: 'M8 2h3l2 6M16 2h-3M12 9a6 6 0 100 12 6 6 0 000-12z',
   flag: 'M5 21V4h11l-2 4 2 4H5',
   chevron: 'M9 6l6 6-6 6',
+  trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
   user: 'M12 4a4 4 0 100 8 4 4 0 000-8zM4 21c1.5-4 4.5-6 8-6s6.5 2 8 6',
 };
 
