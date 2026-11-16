@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useClub } from '../club';
 import { api } from '../lib/api';
@@ -18,6 +18,7 @@ export default function LogGame() {
   const [score, setScore] = useState({ us: 21, them: 15 });
   const [day, setDay] = useState(today);
   const [busy, setBusy] = useState(false);
+  const [dupBy, setDupBy] = useState<string | null>(null); // who already logged what looks like this game
   const doubles = format === 'doubles';
   const size = doubles ? 2 : 1;
   const late = day !== today;
@@ -45,10 +46,32 @@ export default function LogGame() {
   const mySide = doubles ? (partner ? [me, partner] : [me]) : [me];
   const ready = mySide.length === size && against.length === size;
   const scoreOk = won ? score.us > score.them : score.them > score.us;
-  const save = async () => {
+  // Any change to the form means it's no longer the game we warned about.
+  useEffect(() => setDupBy(null), [won, format, partner, against, score, day]);
+
+  /** An unflagged game that day with the same players and the same score, if one exists. */
+  const sameSet = (x: string[], y: string[]) => x.length === y.length && x.every((id) => y.includes(id));
+  const existing = m.results.find((r) => r.date === day && r.format === format
+    && sameSet(won ? r.winners : r.losers, mySide) && sameSet(won ? r.losers : r.winners, against)
+    && Math.max(r.score_a, r.score_b) === Math.max(score.us, score.them) && Math.min(r.score_a, r.score_b) === Math.min(score.us, score.them));
+  const loggedBy = (id: string | null | undefined) => (!id ? 'Someone' : id === me ? 'You' : m.name(id));
+
+  const save = async (allowDuplicate = false) => {
+    if (!allowDuplicate && existing) { setDupBy(loggedBy(existing.logged_by)); return; }
     setBusy(true);
-    const ok = await run(() => api.logGame(format, mySide, against, score.us, score.them, late ? day : undefined),
-      `${won ? 'Win' : 'Game'} saved${late ? ` for ${dayLabel(day, today)}` : ''}!`);
+    const ok = await run(async () => {
+      try {
+        await api.logGame(format, mySide, against, score.us, score.them, late ? day : undefined, allowDuplicate);
+      } catch (e) {
+        const msg = (e as Error).message;
+        if (msg.startsWith('DUPLICATE:')) { // someone saved it a moment ago
+          const who = msg.slice('DUPLICATE:'.length).trim() || 'Someone';
+          setDupBy(who);
+          throw new Error(`${who} already logged this game`);
+        }
+        throw e;
+      }
+    }, `${won ? 'Win' : 'Game'} saved${late ? ` for ${dayLabel(day, today)}` : ''}!`);
     setBusy(false);
     if (ok) nav('/');
   };
@@ -122,7 +145,19 @@ export default function LogGame() {
       </div>
 
       <div className="sticky-save">
-        <button className="save-btn" disabled={!!missing || busy} onClick={save}>{missing ?? (won ? 'Save win' : 'Save game')}</button>
+        {dupBy ? (
+          <div className="stack" style={{ gap: 10, padding: 16, borderRadius: 20, background: '#fff', boxShadow: '0 8px 24px rgba(15,31,23,.12)' }} role="alert">
+            <span style={{ fontSize: 15 }}>
+              <b>{dupBy} already logged this game</b> ({Math.max(score.us, score.them)}–{Math.min(score.us, score.them)} {dayLabel(day, today).toLowerCase() === 'today' ? 'today' : `on ${dayLabel(day, today)}`}). Is this a different game?
+            </span>
+            <div className="grid2">
+              <button className="btn btn-ghost" onClick={() => { setDupBy(null); nav('/'); }}>Same game</button>
+              <button className="btn btn-green" disabled={busy} onClick={() => save(true)}>New game, save</button>
+            </div>
+          </div>
+        ) : (
+          <button className="save-btn" disabled={!!missing || busy} onClick={() => save()}>{missing ?? (won ? 'Save win' : 'Save game')}</button>
+        )}
       </div>
     </>
   );

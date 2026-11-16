@@ -6,7 +6,7 @@ export type Player = { id: string; name: string; active: boolean; is_admin: bool
 export type Settings = { court_start: string; grace_minutes: number; timezone: string };
 export type Checkin = { player_id: string; play_date: string; checked_in_at: string };
 export type Game = {
-  id: string; played_at: string; created_at?: string; format: 'singles' | 'doubles';
+  id: string; played_at: string; created_at?: string; logged_by?: string | null; format: 'singles' | 'doubles';
   score_a: number; score_b: number; flagged_by: string | null; a: string[]; b: string[];
 };
 export type MonthRow = { month: string; court_fee: number; cork_fee: number; other_fee: number };
