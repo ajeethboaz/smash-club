@@ -177,3 +177,20 @@ a { color: var(--green); }
 .link-quiet { background: none; border: 0; padding: 4px 0; color: var(--muted); font-size: 13px; text-decoration: underline; }
 .panel .steps div { background: var(--line); }
 .s-part { background: var(--gold-tint); color: var(--gold-text); }
+
+/* ─── Sunrise theme (Nov 2026): warm morning sky fading to fresh lime ───── */
+:root { --bg: #F5F6E4; --sky-top: #FFE9A8; --sky-mid: #F6F7D8; --sky-low: #EAF5D2; }
+html { background: var(--sky-low); }
+body { background: transparent; }
+body::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 38%, var(--sky-low) 100%); }
+.app { position: relative; }
+.app::before { content: ''; position: absolute; top: 20px; right: -70px; width: 230px; height: 230px; pointer-events: none; z-index: 0; transform: rotate(-28deg);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(15,77,54,0.07)' stroke-width='0.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 3l6 11 6-11M9 3l3 11 3-11M5 3h14'/%3E%3Ccircle cx='12' cy='17.5' r='3.5'/%3E%3C/svg%3E") no-repeat center / contain; }
+.app > * { position: relative; z-index: 1; }
+.panel, .stat, .card:not(.dark), .score-row, .action-done { box-shadow: 0 1px 2px rgba(15,31,23,.04), 0 8px 24px rgba(15,31,23,.06); }
+.tabs { background: rgba(15,31,23,.07); }
+.chip-btn:not([aria-pressed='true']), .round-btn, .date-chip { box-shadow: 0 1px 2px rgba(15,31,23,.06); }
+.nav { background: rgba(255,255,255,.88); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-top-color: rgba(15,31,23,.06); }
+.sticky-save { background: linear-gradient(rgba(234,245,210,0), var(--sky-low) 35%); }
+.action-checkin, .action-log { box-shadow: 0 10px 28px rgba(15,31,23,.16); }
