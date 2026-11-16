@@ -1,10 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useClub } from '../club';
 import { api, emailToUsername } from '../lib/api';
-import { localMinutes, rupees } from '../lib/engine';
-import { Icon } from '../ui';
-import { STATUS_LABEL } from './Pay';
+import { localMinutes } from '../lib/engine';
 import { ago, dailyRecap, playerActivity, whatsappLink, type Usage } from '../lib/activity';
 
 const USAGE: Record<Usage, { label: string; cls: string }> = {
@@ -25,12 +23,7 @@ function zonedIso(date: string, hhmm: string, tz: string) {
 export default function Admin() {
   const { m, run } = useClub();
   const d = m.data;
-  const [partFor, setPartFor] = useState<string | null>(null);
-  const [partAmt, setPartAmt] = useState('');
-  // Opened from Pay's "Costs & payments" button: jump to the costs card.
-  useEffect(() => { if (location.hash === '#costs') document.getElementById('costs')?.scrollIntoView(); }, []);
-  const mo = d.months.find((x) => x.month === d.month);
-  const [fees, setFees] = useState({ court: String(mo?.court_fee ?? 0), cork: String(mo?.cork_fee ?? 0), other: String(mo?.other_fee ?? 0) });
+  const [tab, setTab] = useState<'people' | 'games' | 'club'>('people');
   const [newName, setNewName] = useState('');
   const [login, setLogin] = useState<{ id: string; username: string; password: string } | null>(null);
   const [shared, setShared] = useState<{ id: string; text: string } | null>(null);
@@ -41,8 +34,6 @@ export default function Admin() {
 
   const monthName = new Date(`${d.month}T00:00:00Z`).toLocaleString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' });
   const lineup = (id: string) => d.lineup.find((x) => x.month === d.month && x.player_id === id)?.playing ?? false;
-  const total = Number(fees.court) + Number(fees.cork) + Number(fees.other);
-  const playingCount = d.players.filter((p) => lineup(p.id)).length;
 
   const useMyLocation = () => navigator.geolocation.getCurrentPosition(
     (pos) => void run(() => api.admin.saveSettings({ court_lat: pos.coords.latitude, court_lng: pos.coords.longitude }), 'Court location saved. Check-ins now need to be at the court.'),
@@ -50,145 +41,23 @@ export default function Admin() {
     { enableHighAccuracy: true, timeout: 15000 },
   );
 
+
   return (
-    <div className="page">
-      <header className="row" style={{ gap: 12 }}>
-        <Link to="/me" className="icon-btn" aria-label="Back" style={{ background: '#fff', color: 'var(--ink)' }}><Icon name="back" size={22} /></Link>
-        <h1 className="h1" style={{ fontSize: 28 }}>Admin</h1>
+    <div className="screen" style={{ gap: 18 }}>
+      <header className="between" style={{ alignItems: 'baseline' }}>
+        <h1 className="h1">Admin</h1>
+        <span className="small muted">{d.settings.club_name}</span>
       </header>
 
-      {d.me.is_super && (
-        <Link to="/clubs" className="card dark" style={{ textDecoration: 'none', color: '#F4F5EF', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span className="stack" style={{ gap: 2 }}>
-            <span className="label" style={{ color: 'var(--lime)' }}>Super admin</span>
-            <span className="h3">Clubs</span>
-            <span className="tiny" style={{ color: 'var(--soft-dark)' }}>Create clubs, add their admins, reset any login</span>
-          </span>
-          <span style={{ fontSize: 24, color: 'var(--lime)' }}>›</span>
-        </Link>
-      )}
+      <div className="tabs" role="group" aria-label="Admin section">
+        <button aria-pressed={tab === 'people'} onClick={() => setTab('people')}>People</button>
+        <button aria-pressed={tab === 'games'} onClick={() => setTab('games')}>Games{m.flaggedGames.length ? ` (${m.flaggedGames.length})` : ''}</button>
+        <button aria-pressed={tab === 'club'} onClick={() => setTab('club')}>Club</button>
+      </div>
 
-      {(() => {
-        const acts = playerActivity(m);
-        const opened = acts.filter((x) => x.lastSeen).length;
-        const url = location.origin;
-        return (
-          <section className="card" style={{ gap: 0 }}>
-            <div className="between" style={{ paddingBottom: 4 }}>
-              <h2 className="h3">Who's using the app</h2>
-              <span className="tiny muted">This week</span>
-            </div>
-            <p className="small muted" style={{ margin: '0 0 8px' }}>
-              {opened} of {acts.length} have opened it · {m.todayArrivals.length} checked in today · {m.results.filter((r) => r.date >= m.week).length} games logged this week
-            </p>
-            {acts.map((x) => {
-              const nudge = x.usage === 'no-login' || x.id === d.me.id ? null
-                : x.usage === 'never' ? `Hey ${x.name}! Your ${d.settings.club_name} login is waiting 🏸 Open ${url}, sign in, and tap Check in when you reach court.`
-                : !x.hereToday ? `${x.name}, court's waiting 🏸 Don't forget to check in on ${d.settings.club_name}: ${url}`
-                : x.gamesThisWeek === 0 ? `${x.name}, won a game? 🏆 Tap "I won!" on ${d.settings.club_name} so it counts for King of the Court: ${url}` : null;
-              return (
-                <div key={x.id} className="list-row" style={{ alignItems: 'flex-start' }}>
-                  <span className="stack" style={{ gap: 4, flexGrow: 1, minWidth: 0 }}>
-                    <span className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-                      <b>{x.name}</b>
-                      <span className={`status ${USAGE[x.usage].cls}`}>{USAGE[x.usage].label}</span>
-                      {x.offLineup && <span className="status s-not-playing">Not playing this month</span>}
-                    </span>
-                    <span className="tiny muted">
-                      {x.lastSeen ? `Opened ${ago(x.lastSeen)}` : x.usage === 'no-login' ? 'Set a login below' : 'Hasn\'t signed in yet'}
-                      {' · '}{x.hereToday ? '✅ here today' : 'not checked in today'}
-                      {' · '}{x.checkinsThisWeek} check-in{x.checkinsThisWeek === 1 ? '' : 's'}, {x.winsThisWeek} win{x.winsThisWeek === 1 ? '' : 's'} this week
-                    </span>
-                  </span>
-                  {nudge && (
-                    <a className="btn btn-ghost btn-sm" href={whatsappLink(nudge)} target="_blank" rel="noreferrer"
-                      style={{ height: 32, padding: '0 10px', display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}>Nudge</a>
-                  )}
-                </div>
-              );
-            })}
-            <a className="btn btn-green btn-sm" href={whatsappLink(dailyRecap(m, url))} target="_blank" rel="noreferrer"
-              style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', color: 'var(--lime)' }}>
-              Share today's scoreboard to the group
-            </a>
-          </section>
-        );
-      })()}
-
-      <section className="card" id="costs" style={{ scrollMarginTop: 16 }}>
-        <h2 className="h3">{monthName} costs</h2>
-        <div className="grid3">
-          {([['court', 'Court'], ['cork', 'Cork'], ['other', 'Other']] as const).map(([k, label]) => (
-            <div className="field" key={k}>
-              <label htmlFor={`fee-${k}`}>{label} (₹)</label>
-              <input id={`fee-${k}`} className="input" inputMode="decimal" value={fees[k]} onChange={(e) => setFees({ ...fees, [k]: e.target.value.replace(/[^\d.]/g, '') })} />
-            </div>
-          ))}
-        </div>
-        <span className="small muted">{rupees(total)} ÷ {playingCount} playing = {rupees(playingCount ? total / playingCount : 0)} each</span>
-        <button className="btn btn-green btn-sm" onClick={() => run(() => api.admin.saveMonth({ month: d.month, court_fee: Number(fees.court), cork_fee: Number(fees.cork), other_fee: Number(fees.other) }), 'Costs saved')}>Save costs</button>
-      </section>
-
-      <section className="card" style={{ gap: 0 }}>
-        <h2 className="h3" style={{ paddingBottom: 8 }}>Payments</h2>
-        {d.players.filter((p) => lineup(p.id)).map((p) => {
-          const st = m.money.status(p.id);
-          const editing = partFor === p.id;
-          const savePart = () => {
-            const amt = Number(partAmt);
-            if (!amt) return;
-            setPartFor(null);
-            const full = amt >= m.money.share - 0.005;
-            void run(() => api.admin.confirmPayment(d.month, p.id, true, full ? null : amt),
-              full ? `${p.name} has paid in full` : `${p.name}: ${rupees(amt)} paid, ${rupees(m.money.share - amt)} left`);
-          };
-          return (
-            <div key={p.id} className="list-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
-              <div className="between">
-                <span className="stack" style={{ gap: 2 }}>
-                  <b>{p.name}</b>
-                  <span className={`status s-${st}`} style={{ alignSelf: 'flex-start' }}>
-                    {st === 'part' ? `Part paid · ${rupees(m.money.paid(p.id))} of ${rupees(m.money.share)}` : STATUS_LABEL[st]}
-                  </span>
-                </span>
-                {st === 'confirmed' ? (
-                  <button className="btn btn-ghost btn-sm" onClick={() => run(() => api.admin.confirmPayment(d.month, p.id, false, null))}>Undo</button>
-                ) : !editing && (
-                  <span className="row" style={{ gap: 6 }}>
-                    <button className="btn btn-ghost btn-sm" onClick={() => { setPartFor(p.id); setPartAmt(st === 'part' ? String(m.money.paid(p.id)) : ''); }}>{st === 'part' ? 'Edit' : 'Part'}</button>
-                    <button className="btn btn-green btn-sm" style={{ whiteSpace: 'nowrap' }} onClick={() => run(() => api.admin.confirmPayment(d.month, p.id, true, null), `${p.name}'s payment confirmed`)}>{st === 'part' ? 'Rest paid' : 'Confirm'}</button>
-                  </span>
-                )}
-              </div>
-              {editing && (
-                <div className="row" style={{ gap: 8 }}>
-                  <input className="input" autoFocus inputMode="decimal" aria-label={`Amount ${p.name} has paid so far`} placeholder={`Paid so far, of ${rupees(m.money.share)}`}
-                    value={partAmt} onChange={(e) => setPartAmt(e.target.value.replace(/[^\d.]/g, ''))} onKeyDown={(e) => e.key === 'Enter' && savePart()} style={{ flexGrow: 1 }} />
-                  <button className="btn btn-green btn-sm" disabled={!Number(partAmt)} onClick={savePart}>Save</button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setPartFor(null)}>Cancel</button>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </section>
-
-      {m.flaggedGames.length > 0 && (
-        <section className="card" style={{ gap: 0 }}>
-          <h2 className="h3" style={{ paddingBottom: 8 }}>Flagged games</h2>
-          {m.flaggedGames.map((g) => (
-            <div key={g.id} className="list-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-              <span><b>{g.a.map(m.name).join(' & ')}</b> {g.score_a}–{g.score_b} <b>{g.b.map(m.name).join(' & ')}</b></span>
-              <span className="small muted">Flagged by {m.name(g.flagged_by!)}</span>
-              <div className="row">
-                <button className="btn btn-green btn-sm" onClick={() => run(() => api.admin.resolveGame(g.id, true), 'Score kept')}>Score is right</button>
-                <button className="btn btn-ghost btn-sm" onClick={() => run(() => api.admin.resolveGame(g.id, false), 'Game removed')}>Remove game</button>
-              </div>
-            </div>
-          ))}
-        </section>
-      )}
-
+      {tab === 'people' && (
+        <>
+          <p className="small muted" style={{ margin: 0 }}>Add players, set their logins and choose who plays (and pays) this month.</p>
       <section className="card" style={{ gap: 0 }}>
         <div className="between" style={{ paddingBottom: 8 }}><h2 className="h3">Players</h2><span className="tiny muted">Playing in {monthName.split(' ')[0]}</span></div>
         {d.players.map((p) => (
@@ -264,6 +133,75 @@ export default function Admin() {
         </form>
       </section>
 
+      {(() => {
+        const acts = playerActivity(m);
+        const opened = acts.filter((x) => x.lastSeen).length;
+        const url = location.origin;
+        return (
+          <section className="card" style={{ gap: 0 }}>
+            <div className="between" style={{ paddingBottom: 4 }}>
+              <h2 className="h3">Who's using the app</h2>
+              <span className="tiny muted">This week</span>
+            </div>
+            <p className="small muted" style={{ margin: '0 0 8px' }}>
+              {opened} of {acts.length} have opened it · {m.todayArrivals.length} checked in today · {m.results.filter((r) => r.date >= m.week).length} games logged this week
+            </p>
+            {acts.map((x) => {
+              const nudge = x.usage === 'no-login' || x.id === d.me.id ? null
+                : x.usage === 'never' ? `Hey ${x.name}! Your ${d.settings.club_name} login is waiting 🏸 Open ${url}, sign in, and tap Check in when you reach court.`
+                : !x.hereToday ? `${x.name}, court's waiting 🏸 Don't forget to check in on ${d.settings.club_name}: ${url}`
+                : x.gamesThisWeek === 0 ? `${x.name}, won a game? 🏆 Tap "I won!" on ${d.settings.club_name} so it counts for King of the Court: ${url}` : null;
+              return (
+                <div key={x.id} className="list-row" style={{ alignItems: 'flex-start' }}>
+                  <span className="stack" style={{ gap: 4, flexGrow: 1, minWidth: 0 }}>
+                    <span className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                      <b>{x.name}</b>
+                      <span className={`status ${USAGE[x.usage].cls}`}>{USAGE[x.usage].label}</span>
+                      {x.offLineup && <span className="status s-not-playing">Not playing this month</span>}
+                    </span>
+                    <span className="tiny muted">
+                      {x.lastSeen ? `Opened ${ago(x.lastSeen)}` : x.usage === 'no-login' ? 'Set a login below' : 'Hasn\'t signed in yet'}
+                      {' · '}{x.hereToday ? '✅ here today' : 'not checked in today'}
+                      {' · '}{x.checkinsThisWeek} check-in{x.checkinsThisWeek === 1 ? '' : 's'}, {x.winsThisWeek} win{x.winsThisWeek === 1 ? '' : 's'} this week
+                    </span>
+                  </span>
+                  {nudge && (
+                    <a className="btn btn-ghost btn-sm" href={whatsappLink(nudge)} target="_blank" rel="noreferrer"
+                      style={{ height: 32, padding: '0 10px', display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}>Nudge</a>
+                  )}
+                </div>
+              );
+            })}
+            <a className="btn btn-green btn-sm" href={whatsappLink(dailyRecap(m, url))} target="_blank" rel="noreferrer"
+              style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', color: 'var(--lime)' }}>
+              Share today's scoreboard to the group
+            </a>
+          </section>
+        );
+      })()}
+        </>
+      )}
+
+      {tab === 'games' && (
+        <>
+          <p className="small muted" style={{ margin: 0 }}>Sort out wrong scores and missed check-ins.</p>
+      {m.flaggedGames.length > 0 && (
+        <section className="card" style={{ gap: 0 }}>
+          <h2 className="h3" style={{ paddingBottom: 8 }}>Flagged games</h2>
+          {m.flaggedGames.map((g) => (
+            <div key={g.id} className="list-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+              <span><b>{g.a.map(m.name).join(' & ')}</b> {g.score_a}–{g.score_b} <b>{g.b.map(m.name).join(' & ')}</b></span>
+              <span className="small muted">Flagged by {m.name(g.flagged_by!)}</span>
+              <div className="row">
+                <button className="btn btn-green btn-sm" onClick={() => run(() => api.admin.resolveGame(g.id, true), 'Score kept')}>Score is right</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => run(() => api.admin.resolveGame(g.id, false), 'Game removed')}>Remove game</button>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+          {m.flaggedGames.length === 0 && <section className="card"><span className="small muted">No flagged games. All scores look fine.</span></section>}
+
       <section className="card">
         <h2 className="h3">Fix a check-in</h2>
         <p className="small muted" style={{ margin: 0 }}>For a dead phone or a GPS glitch. Medals and streaks recalculate automatically.</p>
@@ -280,7 +218,12 @@ export default function Admin() {
           <button className="btn btn-ghost btn-sm" onClick={() => run(() => api.admin.setCheckin(fix.player, fix.date, null), 'Check-in removed')}>Remove</button>
         </div>
       </section>
+        </>
+      )}
 
+      {tab === 'club' && (
+        <>
+          <p className="small muted" style={{ margin: 0 }}>When play starts and where check-ins count.</p>
       <section className="card">
         <h2 className="h3">Court rules</h2>
         <div className="grid2">
@@ -302,6 +245,18 @@ export default function Admin() {
         </div>
       </section>
 
+      {d.me.is_super && (
+        <Link to="/clubs" className="card dark" style={{ textDecoration: 'none', color: '#F4F5EF', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span className="stack" style={{ gap: 2 }}>
+            <span className="label" style={{ color: 'var(--lime)' }}>Super admin</span>
+            <span className="h3">Clubs</span>
+            <span className="tiny" style={{ color: 'var(--soft-dark)' }}>Create clubs, add their admins, reset any login</span>
+          </span>
+          <span style={{ fontSize: 24, color: 'var(--lime)' }}>›</span>
+        </Link>
+      )}
+        </>
+      )}
     </div>
   );
 }

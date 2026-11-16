@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useClub } from '../club';
 import { api } from '../lib/api';
 import { MEDALS } from '../lib/engine';
@@ -80,8 +79,6 @@ export default function Me() {
       </section>
 
       <section className="panel">
-        {me.is_admin && <Link to="/admin" className="prow">Admin<Icon name="chevron" size={18} color="var(--muted)" width={2.4} /></Link>}
-        {me.is_super && <Link to="/clubs" className="prow">Clubs<Icon name="chevron" size={18} color="var(--muted)" width={2.4} /></Link>}
         {pwOpen ? (
           <form className="prow" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }} onSubmit={(e) => {
             e.preventDefault();

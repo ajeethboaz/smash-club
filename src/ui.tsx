@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { useClub } from './club';
 import type { Medal } from './lib/engine';
 
 export const initials = (name: string) => name.slice(0, 2).toUpperCase();
@@ -115,15 +116,17 @@ export const useFullScreen = () => useLocation().pathname === '/win';
 
 export function BottomNav() {
   const full = useFullScreen();
+  const admin = useClub().m.data.me.is_admin;
   if (full) return null;
   const items = [
     { to: '/', icon: 'home', label: 'Home' },
     { to: '/board', icon: 'board', label: 'Board' },
-    { to: '/me', icon: 'user', label: 'Me' },
     { to: '/pay', icon: 'card', label: 'Pay' },
+    ...(admin ? [{ to: '/admin', icon: 'shield', label: 'Admin' }] : []),
+    { to: '/me', icon: 'user', label: 'Me' },
   ];
   return (
-    <nav className="nav" aria-label="Main">
+    <nav className="nav" aria-label="Main" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
       {items.map((i) => (
         <NavLink key={i.to} to={i.to} end className={({ isActive }) => (isActive ? 'active' : '')}>
           <Icon name={i.icon} />{i.label}
