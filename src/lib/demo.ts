@@ -123,10 +123,11 @@ export function demoApi(): Api {
         const row = lineup.find((x) => x.month === m && x.player_id === id);
         if (row) row.playing = playing; else lineup.push({ month: m, player_id: id, playing });
       },
-      async confirmPayment(m, id, ok) {
+      async confirmPayment(m, id, ok, amount) {
         let p = payments.find((x) => x.month === m && x.player_id === id);
         if (!p) payments.push((p = { month: m, player_id: id, marked_paid_at: null, confirmed_at: null }));
         p.confirmed_at = ok ? nowIso() : null;
+        if (amount !== undefined) p.amount_paid = ok ? amount : null;
       },
       async addPlayer(name) {
         const id = `p${players.length}`;

@@ -25,6 +25,8 @@ function zonedIso(date: string, hhmm: string, tz: string) {
 export default function Admin() {
   const { m, run } = useClub();
   const d = m.data;
+  const [partFor, setPartFor] = useState<string | null>(null);
+  const [partAmt, setPartAmt] = useState('');
   // Opened from Pay's "Costs & payments" button: jump to the costs card.
   useEffect(() => { if (location.hash === '#costs') document.getElementById('costs')?.scrollIntoView(); }, []);
   const mo = d.months.find((x) => x.month === d.month);
@@ -131,12 +133,41 @@ export default function Admin() {
         <h2 className="h3" style={{ paddingBottom: 8 }}>Payments</h2>
         {d.players.filter((p) => lineup(p.id)).map((p) => {
           const st = m.money.status(p.id);
+          const editing = partFor === p.id;
+          const savePart = () => {
+            const amt = Number(partAmt);
+            if (!amt) return;
+            setPartFor(null);
+            const full = amt >= m.money.share - 0.005;
+            void run(() => api.admin.confirmPayment(d.month, p.id, true, full ? null : amt),
+              full ? `${p.name} has paid in full` : `${p.name}: ${rupees(amt)} paid, ${rupees(m.money.share - amt)} left`);
+          };
           return (
-            <div key={p.id} className="list-row" style={{ justifyContent: 'space-between' }}>
-              <span className="stack" style={{ gap: 2 }}><b>{p.name}</b><span className={`status s-${st}`} style={{ alignSelf: 'flex-start' }}>{STATUS_LABEL[st]}</span></span>
-              {st === 'confirmed'
-                ? <button className="btn btn-ghost btn-sm" onClick={() => run(() => api.admin.confirmPayment(d.month, p.id, false))}>Undo</button>
-                : <button className="btn btn-green btn-sm" onClick={() => run(() => api.admin.confirmPayment(d.month, p.id, true), `${p.name}'s payment confirmed`)}>Confirm</button>}
+            <div key={p.id} className="list-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+              <div className="between">
+                <span className="stack" style={{ gap: 2 }}>
+                  <b>{p.name}</b>
+                  <span className={`status s-${st}`} style={{ alignSelf: 'flex-start' }}>
+                    {st === 'part' ? `Part paid · ${rupees(m.money.paid(p.id))} of ${rupees(m.money.share)}` : STATUS_LABEL[st]}
+                  </span>
+                </span>
+                {st === 'confirmed' ? (
+                  <button className="btn btn-ghost btn-sm" onClick={() => run(() => api.admin.confirmPayment(d.month, p.id, false, null))}>Undo</button>
+                ) : !editing && (
+                  <span className="row" style={{ gap: 6 }}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => { setPartFor(p.id); setPartAmt(st === 'part' ? String(m.money.paid(p.id)) : ''); }}>{st === 'part' ? 'Edit' : 'Part'}</button>
+                    <button className="btn btn-green btn-sm" style={{ whiteSpace: 'nowrap' }} onClick={() => run(() => api.admin.confirmPayment(d.month, p.id, true, null), `${p.name}'s payment confirmed`)}>{st === 'part' ? 'Rest paid' : 'Confirm'}</button>
+                  </span>
+                )}
+              </div>
+              {editing && (
+                <div className="row" style={{ gap: 8 }}>
+                  <input className="input" autoFocus inputMode="decimal" aria-label={`Amount ${p.name} has paid so far`} placeholder={`Paid so far, of ${rupees(m.money.share)}`}
+                    value={partAmt} onChange={(e) => setPartAmt(e.target.value.replace(/[^\d.]/g, ''))} onKeyDown={(e) => e.key === 'Enter' && savePart()} style={{ flexGrow: 1 }} />
+                  <button className="btn btn-green btn-sm" disabled={!Number(partAmt)} onClick={savePart}>Save</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => setPartFor(null)}>Cancel</button>
+                </div>
+              )}
             </div>
           );
         })}

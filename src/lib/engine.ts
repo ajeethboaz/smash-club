@@ -11,7 +11,8 @@ export type Game = {
 };
 export type MonthRow = { month: string; court_fee: number; cork_fee: number; other_fee: number };
 export type MonthPlayer = { month: string; player_id: string; playing: boolean };
-export type Payment = { month: string; player_id: string; marked_paid_at: string | null; confirmed_at: string | null };
+/** amount_paid: set by the admin for a part payment; null means the full share once confirmed. */
+export type Payment = { month: string; player_id: string; marked_paid_at: string | null; confirmed_at: string | null; amount_paid?: number | string | null };
 
 export type Medal = 'gold' | 'silver' | 'bronze';
 export const MEDALS: Medal[] = ['gold', 'silver', 'bronze'];
@@ -297,19 +298,28 @@ export function badges(a: AttendanceStats, g: GameStats): Badge[] {
 
 // ─── Money ─────────────────────────────────────────────────────────────────
 
-export type PayStatus = 'confirmed' | 'marked' | 'pending' | 'not-playing';
+export type PayStatus = 'confirmed' | 'part' | 'marked' | 'pending' | 'not-playing';
 
 export function monthMoney(m: MonthRow | undefined, lineup: MonthPlayer[], payments: Payment[]) {
   const playing = lineup.filter((x) => x.playing);
   const total = m ? Number(m.court_fee) + Number(m.cork_fee) + Number(m.other_fee) : 0;
   const share = playing.length ? total / playing.length : 0;
+  const pay = (playerId: string) => payments.find((x) => x.player_id === playerId);
+  /** Rupees received from this player so far (as confirmed by the admin). */
+  const paid = (playerId: string) => {
+    const p = pay(playerId);
+    if (!p?.confirmed_at) return 0;
+    return p.amount_paid == null ? share : Math.min(share, Number(p.amount_paid));
+  };
   const status = (playerId: string): PayStatus => {
     if (!playing.some((x) => x.player_id === playerId)) return 'not-playing';
-    const p = payments.find((x) => x.player_id === playerId);
-    return p?.confirmed_at ? 'confirmed' : p?.marked_paid_at ? 'marked' : 'pending';
+    const p = pay(playerId);
+    if (p?.confirmed_at) return paid(playerId) < share - 0.005 ? 'part' : 'confirmed';
+    return p?.marked_paid_at ? 'marked' : 'pending';
   };
-  const collected = playing.filter((x) => status(x.player_id) === 'confirmed').length * share;
-  return { total, share, players: playing.length, status, collected };
+  const due = (playerId: string) => (status(playerId) === 'not-playing' ? 0 : Math.max(0, share - paid(playerId)));
+  const collected = playing.reduce((s, x) => s + paid(x.player_id), 0);
+  return { total, share, players: playing.length, status, paid, due, collected };
 }
 
 export const rupees = (n: number) =>

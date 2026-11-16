@@ -96,4 +96,16 @@ describe('money', () => {
     expect(m.status('ra')).toBe('not-playing');
     expect(m.collected).toBe(1880);
   });
+
+  it('tracks part payments', () => {
+    const lineup = players.map((p) => ({ month: '2026-11-01', player_id: p.id, playing: true }));
+    const m = monthMoney({ month: '2026-11-01', court_fee: 8000, cork_fee: 1400, other_fee: 0 }, lineup,
+      [{ month: '2026-11-01', player_id: 'kr', marked_paid_at: null, confirmed_at: 'y', amount_paid: '1000.00' },
+       { month: '2026-11-01', player_id: 'mo', marked_paid_at: null, confirmed_at: 'y', amount_paid: null }]);
+    expect(m.status('kr')).toBe('part');
+    expect(m.paid('kr')).toBe(1000);
+    expect(m.due('kr')).toBe(880);
+    expect(m.status('mo')).toBe('confirmed');
+    expect(m.collected).toBe(2880);
+  });
 });

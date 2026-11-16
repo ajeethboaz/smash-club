@@ -176,3 +176,4 @@ a { color: var(--green); }
 .ring-face { width: 52px; height: 52px; border-radius: 26px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; box-sizing: border-box; }
 .link-quiet { background: none; border: 0; padding: 4px 0; color: var(--muted); font-size: 13px; text-decoration: underline; }
 .panel .steps div { background: var(--line); }
+.s-part { background: var(--gold-tint); color: var(--gold-text); }

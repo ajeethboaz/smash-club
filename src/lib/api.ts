@@ -47,7 +47,8 @@ export interface Api {
   admin: {
     saveMonth(m: MonthRow): Promise<void>;
     setPlaying(month: string, playerId: string, playing: boolean): Promise<void>;
-    confirmPayment(month: string, playerId: string, confirmed: boolean): Promise<void>;
+    /** amount: rupees for a part payment; leave out (or null) for the full share. */
+    confirmPayment(month: string, playerId: string, confirmed: boolean, amount?: number | null): Promise<void>;
     addPlayer(name: string): Promise<string>;
     /** Creates (or replaces) a player's username + password login. */
     setLogin(playerId: string, username: string, password: string): Promise<void>;
@@ -149,7 +150,7 @@ function supabaseApi(sb: SupabaseClient, url: string, key: string): Api {
         sb.from('games').select('id,played_at,created_at,logged_by,format,score_a,score_b,flagged_by,game_players(player_id,team)').eq('club_id', clubId).order('played_at'),
         sb.from('months').select('month,court_fee,cork_fee,other_fee').eq('club_id', clubId).order('month'),
         sb.from('month_players').select('month,player_id,playing').eq('club_id', clubId),
-        sb.from('payments').select('month,player_id,marked_paid_at,confirmed_at').eq('club_id', clubId),
+        sb.from('payments').select('*').eq('club_id', clubId),
       ]);
       const settings = club;
       for (const r of [club, players, checkins, games, months, lineup, payments]) fail(r.error);
@@ -202,13 +203,15 @@ function supabaseApi(sb: SupabaseClient, url: string, key: string): Api {
       async setPlaying(month, player_id, playing) {
         fail((await sb.from('month_players').upsert({ month, player_id, playing })).error);
       },
-      async confirmPayment(month, player_id, confirmed) {
+      async confirmPayment(month, player_id, confirmed, amount) {
         const me = (await sb.rpc('claim_player')).data as Player;
-        fail((await sb.from('payments').upsert({
+        const row: Record<string, unknown> = {
           month, player_id,
           confirmed_at: confirmed ? new Date().toISOString() : null,
           confirmed_by: confirmed ? me.id : null,
-        })).error);
+        };
+        if (amount !== undefined) row.amount_paid = confirmed ? amount : null;
+        fail((await sb.from('payments').upsert(row)).error);
       },
       async addPlayer(name) {
         const { data, error } = await sb.from('players').insert({ name }).select('id').single();
