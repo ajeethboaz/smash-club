@@ -44,6 +44,8 @@ export function buildModel(d: ClubData) {
   const teamPlayer = [...gms.values()].filter((x) => x.partnersThisMonth > 0).sort((a, b) => b.partnersThisMonth - a.partnersThisMonth || b.won - a.won)[0];
 
   const money = monthMoney(d.months.find((m) => m.month === d.month), monthLineup, d.payments.filter((p) => p.month === d.month));
+  /** Money for any month (YYYY-MM-01), e.g. to look back at October. */
+  const moneyFor = (month: string) => monthMoney(d.months.find((m) => m.month === month), d.lineup.filter((x) => x.month === month), d.payments.filter((p) => p.month === month));
 
   return {
     data: d, tz, name, roster, days, att, gms, attRank, gameRank, rankOf, rating, results,
@@ -51,6 +53,7 @@ export function buildModel(d: ClubData) {
     myBadges: badges(myAtt, myGames),
     trophies: { punctuality, ironMen, potm, teamPlayer },
     money,
+    moneyFor,
     recentGames: [...results].sort((x, y) => (y.created_at ?? y.played_at).localeCompare(x.created_at ?? x.played_at)).slice(0, 6),
     flaggedGames: d.games.filter((g) => g.flagged_by),
   };

@@ -118,7 +118,10 @@ export function demoApi(): Api {
       if (p) p.marked_paid_at ??= nowIso(); else payments.push({ month: m, player_id: 'aj', marked_paid_at: nowIso(), confirmed_at: null });
     },
     admin: {
-      async saveMonth(m) { Object.assign(months.find((x) => x.month === m.month)!, m); },
+      async saveMonth(m) {
+        const row = months.find((x) => x.month === m.month);
+        if (row) Object.assign(row, m); else { months.push({ ...m }); months.sort((x, y) => x.month.localeCompare(y.month)); }
+      },
       async setPlaying(m, id, playing) {
         const row = lineup.find((x) => x.month === m && x.player_id === id);
         if (row) row.playing = playing; else lineup.push({ month: m, player_id: id, playing });
