@@ -103,7 +103,7 @@ export default function Board() {
               </div>
             ))}
           </section>
-          <p className="tiny muted" style={{ margin: 0 }}>10 points a win, 2 for every game played and lost.</p>
+          <p className="tiny muted" style={{ margin: 0 }}>10 points a win, 5 for every game played and lost.</p>
         </>
       )}
 

@@ -60,7 +60,7 @@ describe('games', () => {
   it('ignores flagged games and scores every win the same', () => {
     expect(results).toHaveLength(2);
     expect(st.get('aj')).toMatchObject({ played: 1, won: 1, points: 10 });
-    expect(st.get('mo')).toMatchObject({ played: 1, lost: 1, points: 2 });
+    expect(st.get('mo')).toMatchObject({ played: 1, lost: 1, points: 5 });
     // No bonus for beating a stronger side: every win is 10.
     expect(st.get('ka')!.points).toBe(10);
   });

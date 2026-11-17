@@ -18,7 +18,7 @@ export type Medal = 'gold' | 'silver' | 'bronze';
 export const MEDALS: Medal[] = ['gold', 'silver', 'bronze'];
 
 // Every win is worth the same: no bonus for who you beat.
-export const POINTS = { win: 10, loss: 2 } as const;
+export const POINTS = { win: 10, loss: 5 } as const;
 export const START_RATING = 1200;
 const K = 24;
 

@@ -10,7 +10,7 @@ It installs on a phone like an app ("Add to Home Screen") and needs no app store
 | Showing up (gold) | Playing (lime) |
 |---|---|
 | Tap **"I'm here"** when you reach the court | Log a game right after you play it |
-| First three on-time arrivals each day win gold, silver and bronze | Points: +10 a win, +2 a loss, +5 for beating a higher-rated side |
+| First three on-time arrivals each day win gold, silver and bronze | Points: +10 a win, +5 a loss |
 | On-time streak; a **strike** for each day you miss while others play | Elo-style rating that moves more when you beat stronger players |
 | Trophies: Punctuality King, Iron Man | Weekly **King of the Court** medals; trophies: Player of the Month, Giant Killer |
 | Weekly challenge: podium on 4 days | Weekly challenge: win with 3 different partners |
