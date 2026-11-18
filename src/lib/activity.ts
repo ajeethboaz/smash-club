@@ -74,10 +74,8 @@ export function dailyRecap(m: Model, url: string) {
     }
   } else lines.push('🏆 No wins logged yet today. Won a game? Log it!');
 
-  if (m.kings.length) lines.push('', `👑 King of the Court this week: ${m.name(m.kings[0].player_id)} (${m.kings[0].wins} win${m.kings[0].wins === 1 ? '' : 's'})`);
-
   const streaker = [...m.att.values()].filter((a) => a.streak >= 3).sort((a, b) => b.streak - a.streak)[0];
-  if (streaker) lines.push(`🔥 Longest on-time streak: ${m.name(streaker.player_id)} · ${streaker.streak} days`);
+  if (streaker) lines.push('', `🔥 Longest on-time streak: ${m.name(streaker.player_id)} · ${streaker.streak} days`);
 
   lines.push('', `Check in & log your wins 👉 ${url}`);
   return lines.join('\n');
