@@ -150,7 +150,7 @@ export default function Admin() {
               const nudge = x.usage === 'no-login' || x.id === d.me.id ? null
                 : x.usage === 'never' ? `Hey ${x.name}! Your ${d.settings.club_name} login is waiting 🏸 Open ${url}, sign in, and tap Check in when you reach court.`
                 : !x.hereToday ? `${x.name}, court's waiting 🏸 Don't forget to check in on ${d.settings.club_name}: ${url}`
-                : x.gamesThisWeek === 0 ? `${x.name}, won a game? 🏆 Tap "I won!" on ${d.settings.club_name} so it counts: ${url}` : null;
+                : x.gamesThisWeek === 0 ? `${x.name}, won a game? 🏆 Tap "I won!" on ${d.settings.club_name} so it counts for King of the Court: ${url}` : null;
               return (
                 <div key={x.id} className="list-row" style={{ alignItems: 'flex-start' }}>
                   <span className="stack" style={{ gap: 4, flexGrow: 1, minWidth: 0 }}>
